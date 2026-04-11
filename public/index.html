@@ -302,6 +302,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
   <!-- ANALYTICS -->
   <div class="page-content" id="page-analytics">
+    <!-- Tabs: Local / MEXC -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px">
+      <button class="nav-tab on" id="atab-local" onclick="switchAnaTab('local')">📋 Τοπικά (Simulation)</button>
+      <button class="nav-tab"    id="atab-mexc"  onclick="switchAnaTab('mexc')">📡 MEXC Live</button>
+    </div>
+
+    <!-- Notice για MEXC tab -->
+    <div id="ana-nokeys" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--amber)">
+      ⚠️ Δεν έχεις ορίσει MEXC API Keys. Πήγαινε στις <strong>Ρυθμίσεις</strong> για να τα προσθέσεις.
+    </div>
+
     <div class="ana-grid">
       <div class="ana-card"><div class="ana-label">Win Rate</div><div class="ana-val sv-green" id="a-winrate">—</div></div>
       <div class="ana-card"><div class="ana-label">Profit Factor</div><div class="ana-val sv-blue" id="a-pf">—</div></div>
@@ -310,19 +321,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       <div class="ana-card"><div class="ana-label">Won</div><div class="ana-val sv-green" id="a-won">—</div></div>
       <div class="ana-card"><div class="ana-label">Lost</div><div class="ana-val sv-red" id="a-lost">—</div></div>
       <div class="ana-card"><div class="ana-label">Total P&L</div><div class="ana-val" id="a-pnl">—</div></div>
-      <div class="ana-card"><div class="ana-label">Net P&L (με fees)</div><div class="ana-val" id="a-net">—</div></div>
+      <div class="ana-card"><div class="ana-label">Net P&L</div><div class="ana-val" id="a-net">—</div></div>
       <div class="ana-card"><div class="ana-label">Funding Fees</div><div class="ana-val sv-red" id="a-funding">—</div></div>
       <div class="ana-card"><div class="ana-label">Commissions</div><div class="ana-val sv-red" id="a-comm">—</div></div>
-      <div class="ana-card"><div class="ana-label">Current Balance</div><div class="ana-val" id="a-balance">—</div></div>
+      <div class="ana-card"><div class="ana-label">Balance</div><div class="ana-val" id="a-balance">—</div></div>
       <div class="ana-card"><div class="ana-label">Unrealized P&L</div><div class="ana-val" id="a-unrealized">—</div></div>
     </div>
     <div class="chart-wrap">
-      <div class="chart-title">📈 Equity Curve (από MEXC)</div>
+      <div class="chart-title" id="a-chart-title">📈 Equity Curve — Τοπικά</div>
       <canvas id="equity-chart" height="260"></canvas>
     </div>
     <div class="card">
       <div class="card-head nc">
-        <span class="card-title">📋 Trade History από MEXC</span>
+        <span class="card-title" id="a-hist-title">📋 Trade History — Τοπικά</span>
         <span class="card-count" id="a-hist-count">0</span>
       </div>
       <div class="scroll" id="a-hist-list">
@@ -333,17 +344,40 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
   <!-- SETTINGS -->
   <div class="page-content" id="page-settings">
+
+    <!-- API Keys -->
+    <div class="set-section">
+      <div class="set-title">🔑 MEXC API Keys</div>
+      <div id="keys-status" style="margin-bottom:14px;font-size:12px;padding:10px 14px;border-radius:8px;background:var(--card2);border:1px solid var(--line)">
+        <span id="keys-status-txt">⏳ Φόρτωση...</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <div class="form-hint">Δημιουργία στο MEXC → Λογαριασμός → API Management (δωρεάν)</div>
+        <input class="form-input" type="password" id="set-api-key" placeholder="Εισαγωγή API Key..." autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Secret Key</label>
+        <div class="form-hint">Φαίνεται μόνο κατά τη δημιουργία — αποθήκευσέ το αμέσως</div>
+        <input class="form-input" type="password" id="set-secret-key" placeholder="Εισαγωγή Secret Key..." autocomplete="off">
+      </div>
+      <button class="btn btn-amber" onclick="saveSettings()" style="width:100%;justify-content:center;padding:10px">
+        💾 Αποθήκευση Keys
+      </button>
+    </div>
+
+    <!-- Trading Settings -->
     <div class="set-section">
       <div class="set-title">⚙️ Trading Settings</div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Risk Per Trade (%)</label>
-          <div class="form-hint">Ποσοστό balance που ρισκάρεται σε κάθε trade (1-2%)</div>
+          <div class="form-hint">Ποσοστό balance (simulation + real)</div>
           <input class="form-input" type="number" id="set-risk" min="0.1" max="10" step="0.1" value="2">
         </div>
         <div class="form-group">
-          <label class="form-label">Initial Balance ($)</label>
-          <div class="form-hint">Αρχικό κεφάλαιο για equity curve</div>
+          <label class="form-label">Simulation Balance ($)</label>
+          <div class="form-hint">Αρχικό κεφάλαιο για paper trading</div>
           <input class="form-input" type="number" id="set-balance" min="100" step="100" value="10000">
         </div>
       </div>
@@ -363,15 +397,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         💾 Αποθήκευση Ρυθμίσεων
       </button>
     </div>
+
     <div class="set-section">
       <div class="set-title">ℹ️ Πώς Λειτουργεί</div>
       <div class="info-box">
-        🛰 <strong>Data:</strong> MEXC Futures live τιμές κάθε 15s + candlestick (1H) κάθε 60s.<br>
-        🧠 <strong>ICT:</strong> Liquidity Sweep → Market Structure Shift → Fair Value Gap.<br>
-        📋 <strong>Signals:</strong> 4h για ενεργοποίηση — αλλιώς λήγουν αυτόματα.<br>
-        💼 <strong>Entry:</strong> LIMIT order στο ακριβές FVG entry price.<br>
-        🛡 <strong>SL/TP:</strong> Software monitoring κάθε 5s με MARKET close.<br>
-        📊 <strong>Analytics:</strong> 100% από MEXC — πραγματικά δεδομένα.
+        📋 <strong>Local Mode:</strong> Κάθε signal αποθηκεύεται τοπικά πρώτα (paper trading).<br>
+        📤 <strong>Send to MEXC:</strong> Με ένα κουμπί στέλνεις την εντολή στο MEXC Futures.<br>
+        🛡 <strong>SL/TP:</strong> Monitoring κάθε 5s — τοπικά ή real στο MEXC.<br>
+        📊 <strong>Dual Analytics:</strong> Τοπικά (simulation) + MEXC Live (απαιτεί API Keys).<br>
+        🔑 <strong>API Keys:</strong> Δωρεάν στο MEXC → Λογαριασμός → API Management.
       </div>
     </div>
   </div>
@@ -388,6 +422,7 @@ let activePairs = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','
 let allSignals  = [];
 let sigFilter   = 'pending';
 let equityChart = null;
+let anaTab      = 'local';
 
 // ── COLLAPSE ──────────────────────────────────────────────────────────
 function toggleCard(id) {
@@ -450,138 +485,66 @@ async function loadSettingsUI() {
     document.getElementById('set-balance').value = s.initialBalance || 10000;
     document.getElementById('set-leverage').value= s.leverage       || 10;
     document.getElementById('set-scan').value    = s.scanInterval   || 60;
+    // API Keys (masked)
+    if(s.mexcApiKey)    document.getElementById('set-api-key').placeholder    = s.mexcApiKey    || 'Εισαγωγή API Key...';
+    if(s.mexcSecretKey) document.getElementById('set-secret-key').placeholder = s.mexcSecretKey || 'Εισαγωγή Secret Key...';
+    // Status
+    const statusEl = document.getElementById('keys-status-txt');
+    if(s.hasKeys) {
+      statusEl.innerHTML = '✅ API Keys ορισμένα — <strong>Live trading ενεργό</strong>';
+      document.getElementById('keys-status').style.borderColor='rgba(34,197,94,.3)';
+      document.getElementById('keys-status').style.background='rgba(34,197,94,.06)';
+    } else {
+      statusEl.innerHTML = '⚠️ Δεν υπάρχουν API Keys — <strong>μόνο Local (paper trading)</strong>';
+    }
   } catch {}
 }
 
 async function saveSettings() {
+  const apiKey    = document.getElementById('set-api-key').value.trim();
+  const secretKey = document.getElementById('set-secret-key').value.trim();
   const s={
     riskPercent:    parseFloat(document.getElementById('set-risk').value),
     initialBalance: parseFloat(document.getElementById('set-balance').value),
     leverage:       parseInt(document.getElementById('set-leverage').value),
     scanInterval:   parseInt(document.getElementById('set-scan').value),
   };
+  if(apiKey)    s.mexcApiKey    = apiKey;
+  if(secretKey) s.mexcSecretKey = secretKey;
   try {
     const r=await fetch(API+'/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});
     const d=await r.json();
-    toast(d.success?'✓ Αποθηκεύτηκαν':d.error,d.success?'ok':'err');
+    if(d.success){
+      toast('✓ Αποθηκεύτηκαν','ok');
+      // Καθάρισε τα password fields
+      document.getElementById('set-api-key').value='';
+      document.getElementById('set-secret-key').value='';
+      loadSettingsUI();
+    } else { toast(d.error||'Σφάλμα','err'); }
   } catch(e) { toast(e.message,'err'); }
 }
 
-// ── ANALYTICS (100% από MEXC) ──────────────────────────────────────
-async function loadAnalytics() {
-  document.getElementById('a-hist-list').innerHTML='<div class="ana-loading">⏳ Φόρτωση από MEXC...</div>';
+// ── ANALYTICS TAB SWITCH ──────────────────────────────────────────────
+function switchAnaTab(tab) {
+  anaTab = tab;
+  document.getElementById('atab-local').classList.toggle('on', tab==='local');
+  document.getElementById('atab-mexc').classList.toggle('on',  tab==='mexc');
+  loadAnalytics();
+}
 
+// ── SEND TO MEXC ──────────────────────────────────────────────────────
+async function sendToMEXC(signalId) {
+  if (!confirm('Αποστολή εντολής στο MEXC Futures;')) return;
   try {
-    const r = await fetch(API+'/analytics');
-    if (!r.ok) throw new Error('HTTP '+r.status);
+    const r = await fetch(API+'/send-to-mexc/'+signalId, {method:'POST', headers:{'Content-Type':'application/json'}});
     const d = await r.json();
-
-    // Stats
-    document.getElementById('a-winrate').textContent  = (d.winRate||0)+'%';
-    document.getElementById('a-winrate').className    = 'ana-val '+(d.winRate>=50?'sv-green':'sv-red');
-    document.getElementById('a-pf').textContent       = d.profitFactor||'—';
-    document.getElementById('a-dd').textContent       = (d.maxDrawdown||0)+'%';
-    document.getElementById('a-total').textContent    = d.totalTrades||0;
-    document.getElementById('a-won').textContent      = d.won||0;
-    document.getElementById('a-lost').textContent     = d.lost||0;
-
-    const pnlEl=document.getElementById('a-pnl');
-    pnlEl.textContent=fpnl(d.totalPnl);
-    pnlEl.className='ana-val '+(d.totalPnl>=0?'sv-green':'sv-red');
-
-    const netEl=document.getElementById('a-net');
-    netEl.textContent=fpnl(d.netPnl);
-    netEl.className='ana-val '+(d.netPnl>=0?'sv-green':'sv-red');
-
-    document.getElementById('a-funding').textContent  = fpnl(d.totalFunding);
-    document.getElementById('a-comm').textContent     = fpnl(d.totalCommissions);
-    document.getElementById('a-balance').textContent  = '$'+(d.currentBalance||0).toFixed(2);
-    document.getElementById('a-unrealized').textContent = fpnl(d.unrealizedPnl);
-
-    // Equity Chart
-    if (d.equity && d.equity.length > 1) {
-      const labels = d.equity.map(e => new Date(e.time).toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit'}));
-      const data   = d.equity.map(e => e.balance);
-
-      if (equityChart) equityChart.destroy();
-      equityChart = new Chart(document.getElementById('equity-chart').getContext('2d'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Balance',
-            data,
-            borderColor:     '#f59e0b',
-            backgroundColor: 'rgba(245,158,11,.06)',
-            borderWidth:     2,
-            fill:            true,
-            tension:         0.4,
-            pointRadius:     2,
-            pointHoverRadius: 5,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}} },
-          scales: {
-            x: { grid:{color:'rgba(37,40,54,.5)'}, ticks:{color:'#5c6480',font:{size:10}} },
-            y: { grid:{color:'rgba(37,40,54,.5)'}, ticks:{color:'#5c6480',font:{size:10},callback:v=>'$'+v} }
-          }
-        }
-      });
+    if (d.success) {
+      toast('✅ Εντολή στάλθηκε στο MEXC!', 'ok');
+      await refresh();
     } else {
-      const ctx=document.getElementById('equity-chart').getContext('2d');
-      ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
-      ctx.fillStyle='#5c6480'; ctx.font='13px DM Sans'; ctx.textAlign='center';
-      ctx.fillText('Δεν υπάρχουν αρκετά δεδομένα ακόμα',ctx.canvas.width/2,130);
+      toast('❌ '+(d.error||'Αποτυχία αποστολής'), 'err');
     }
-
-    // Trade list από MEXC
-    const trades = d.trades || [];
-    document.getElementById('a-hist-count').textContent = trades.length;
-
-    // Ομαδοποίηση ανά ημέρα
-    const groups = {};
-    for (const t of trades) {
-      const day = new Date(t.time).toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-      if (!groups[day]) groups[day]={trades:[],pnl:0,won:0,lost:0};
-      groups[day].trades.push(t);
-      groups[day].pnl  += t.pnl;
-      if (t.pnl>0) groups[day].won++; else groups[day].lost++;
-    }
-
-    if (!trades.length) {
-      document.getElementById('a-hist-list').innerHTML='<div class="empty">Δεν υπάρχουν trades ακόμα</div>';
-    } else {
-      document.getElementById('a-hist-list').innerHTML=Object.entries(groups).map(([date,g])=>`
-        <div>
-          <div class="day-header">
-            <div class="day-date">📅 ${date} <span style="color:var(--sub);font-size:11px">(${g.trades.length})</span></div>
-            <div class="day-right">
-              <div class="day-wl">
-                <span style="color:var(--green)">✅ ${g.won}</span>
-                <span style="color:var(--red)">❌ ${g.lost}</span>
-              </div>
-              <div class="day-pnl" style="color:${g.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(g.pnl)}</div>
-            </div>
-          </div>
-          ${g.trades.map(t=>`
-            <div class="ana-day-row">
-              <div>
-                <div class="ana-sym">${t.symbol}</div>
-                <div class="ana-time">${new Date(t.time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
-              </div>
-              <div style="font-family:var(--mono);font-size:12px;color:var(--sub)">#${t.tradeId||'—'}</div>
-              <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:${t.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(t.pnl)}</div>
-              <div style="font-size:16px">${t.pnl>0?'✅':t.pnl<0?'❌':'—'}</div>
-            </div>`).join('')}
-        </div>`).join('');
-    }
-
-  } catch(e) {
-    document.getElementById('a-hist-list').innerHTML=`<div class="empty">❌ Σφάλμα: ${e.message}</div>`;
-    console.error('Analytics error:',e);
-  }
+  } catch(e) { toast(e.message, 'err'); }
 }
 
 // ── PAIRS ─────────────────────────────────────────────────────────────
@@ -764,10 +727,14 @@ function renderOpen(positions) {
         <div class="trade-meta">
           📅 ${fdt(p.openTime)} · ⏱ ${fdur(Date.now()-(p.openTime||Date.now()))}
           ${isPending&&p.expireAt?` · ⏳ Λήγει σε ${Math.max(0,Math.round((p.expireAt-Date.now())/60000))}m`:''}
+          ${p.isLocal?'<span style="color:var(--sub);font-size:10px"> · 📋 LOCAL</span>':'<span style="color:var(--green);font-size:10px"> · 📡 MEXC</span>'}
         </div>
-        <button class="btn-close-trade" onclick="closeTrade('${p.signalId}','${p.symbol}',${p.currentPrice||p.entryPrice})">
-          ${isPending?'Ακύρωση':'Κλείσιμο'}
-        </button>
+        <div style="display:flex;gap:6px">
+          ${p.isLocal&&!isPending?`<button class="btn-close-trade" style="background:var(--amber);color:#000" onclick="sendToMEXC('${p.signalId}')">📤 MEXC</button>`:''}
+          <button class="btn-close-trade" onclick="closeTrade('${p.signalId}','${p.symbol}',${p.currentPrice||p.entryPrice})">
+            ${isPending?'Ακύρωση':'Κλείσιμο'}
+          </button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -883,61 +850,128 @@ function toast(msg,type){
   setTimeout(()=>el.className='toast',3000);
 }
 
-// ── ANALYTICS με cache ────────────────────────────────────────────────
+// ── ANALYTICS (dual-tab: local / mexc) ───────────────────────────────
 async function loadAnalytics() {
-  document.getElementById('a-hist-list').innerHTML='<div class="ana-loading">⏳ Φόρτωση από MEXC...</div>';
+  const nokeysEl = document.getElementById('ana-nokeys');
+  const endpoint = anaTab==='local' ? '/analytics/local' : '/analytics/mexc';
+  const title    = anaTab==='local' ? 'Τοπικά (Simulation)' : 'MEXC Live';
+
+  // For MEXC tab, verify keys first
+  if (anaTab==='mexc') {
+    try {
+      const sRes = await fetch(API+'/settings');
+      const s    = await sRes.json();
+      if (!s.hasKeys) {
+        nokeysEl.style.display = 'block';
+        document.getElementById('a-hist-list').innerHTML = '<div class="empty">⚠️ Πήγαινε στις Ρυθμίσεις για να προσθέσεις MEXC API Keys</div>';
+        return;
+      }
+    } catch(e) {}
+  }
+  nokeysEl.style.display = 'none';
+
+  document.getElementById('a-chart-title').textContent = `📈 Equity Curve — ${title}`;
+  document.getElementById('a-hist-title').textContent  = `📋 Trade History — ${title}`;
+  document.getElementById('a-hist-list').innerHTML = `<div class="ana-loading">⏳ Φόρτωση ${title}...</div>`;
+
   try {
-    const r=await fetch(API+'/analytics');
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    cachedAnalytics=d;
+    const r = await fetch(API+endpoint);
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    cachedAnalytics = d;
 
-    document.getElementById('a-winrate').textContent=(d.winRate||0)+'%';
-    document.getElementById('a-winrate').className='ana-val '+(d.winRate>=50?'sv-green':'sv-red');
-    document.getElementById('a-pf').textContent=d.profitFactor||'—';
-    document.getElementById('a-dd').textContent=(d.maxDrawdown||0)+'%';
-    document.getElementById('a-total').textContent=d.totalTrades||0;
-    document.getElementById('a-won').textContent=d.won||0;
-    document.getElementById('a-lost').textContent=d.lost||0;
+    // Stats
+    document.getElementById('a-winrate').textContent  = (d.winRate||0)+'%';
+    document.getElementById('a-winrate').className    = 'ana-val '+(d.winRate>=50?'sv-green':'sv-red');
+    document.getElementById('a-pf').textContent       = d.profitFactor||'—';
+    document.getElementById('a-dd').textContent       = (d.maxDrawdown||0)+'%';
+    document.getElementById('a-total').textContent    = d.totalTrades||0;
+    document.getElementById('a-won').textContent      = d.won||0;
+    document.getElementById('a-lost').textContent     = d.lost||0;
 
-    const pnlEl=document.getElementById('a-pnl');
-    pnlEl.textContent=fpnl(d.totalPnl);
-    pnlEl.className='ana-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+    const pnlEl = document.getElementById('a-pnl');
+    pnlEl.textContent = fpnl(d.totalPnl);
+    pnlEl.className   = 'ana-val '+(d.totalPnl>=0?'sv-green':'sv-red');
 
-    const netEl=document.getElementById('a-net');
-    netEl.textContent=fpnl(d.netPnl);
-    netEl.className='ana-val '+(d.netPnl>=0?'sv-green':'sv-red');
+    const netEl = document.getElementById('a-net');
+    netEl.textContent = fpnl(d.netPnl);
+    netEl.className   = 'ana-val '+(d.netPnl>=0?'sv-green':'sv-red');
 
-    document.getElementById('a-funding').textContent=fpnl(d.totalFunding);
-    document.getElementById('a-comm').textContent=fpnl(d.totalCommissions);
-    document.getElementById('a-balance').textContent='$'+(d.currentBalance||0).toFixed(2);
-    document.getElementById('a-unrealized').textContent=fpnl(d.unrealizedPnl);
+    document.getElementById('a-funding').textContent    = fpnl(d.totalFunding);
+    document.getElementById('a-comm').textContent       = fpnl(d.totalCommissions);
+    document.getElementById('a-balance').textContent    = '$'+(d.currentBalance||0).toFixed(2);
+    document.getElementById('a-unrealized').textContent = fpnl(d.unrealizedPnl);
 
     // Equity Chart
-    if(d.equity&&d.equity.length>1){
-      const labels=d.equity.map(e=>new Date(e.time).toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit'}));
-      const data  =d.equity.map(e=>e.balance);
-      if(equityChart)equityChart.destroy();
-      equityChart=new Chart(document.getElementById('equity-chart').getContext('2d'),{
-        type:'line',
-        data:{labels,datasets:[{label:'Balance',data,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.06)',borderWidth:2,fill:true,tension:0.4,pointRadius:2,pointHoverRadius:5}]},
-        options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}}},scales:{x:{grid:{color:'rgba(37,40,54,.5)'},ticks:{color:'#5c6480',font:{size:10}}},y:{grid:{color:'rgba(37,40,54,.5)'},ticks:{color:'#5c6480',font:{size:10},callback:v=>'$'+v}}}}
+    if (d.equity && d.equity.length > 1) {
+      const labels = d.equity.map(e => new Date(e.time).toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit'}));
+      const data   = d.equity.map(e => e.balance);
+      if (equityChart) equityChart.destroy();
+      equityChart = new Chart(document.getElementById('equity-chart').getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Balance', data, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.06)', borderWidth:2, fill:true, tension:0.4, pointRadius:2, pointHoverRadius:5 }] },
+        options: { responsive:true, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}} }, scales:{ x:{grid:{color:'rgba(37,40,54,.5)'},ticks:{color:'#5c6480',font:{size:10}}}, y:{grid:{color:'rgba(37,40,54,.5)'},ticks:{color:'#5c6480',font:{size:10},callback:v=>'$'+v}} } }
       });
+    } else {
+      const ctx = document.getElementById('equity-chart').getContext('2d');
+      ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+      ctx.fillStyle='#5c6480'; ctx.font='13px DM Sans'; ctx.textAlign='center';
+      ctx.fillText('Δεν υπάρχουν αρκετά δεδομένα ακόμα', ctx.canvas.width/2, 130);
     }
 
-    // History list
-    renderHistory(d);
-    document.getElementById('a-hist-count').textContent=(d.trades||[]).length;
+    // Trade history list
+    const trades = d.trades || [];
+    document.getElementById('a-hist-count').textContent = trades.length;
 
-    // Dashboard stats update
-    const pEl=document.getElementById('s-pnl');
-    pEl.textContent=fpnl(d.totalPnl);
-    pEl.className='stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
-    document.getElementById('s-winrate').textContent=(d.winRate||0)+'%';
-    document.getElementById('s-drawdown').textContent=(d.maxDrawdown||0)+'%';
+    const groups = {};
+    for (const t of trades) {
+      const day = new Date(t.time).toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+      if (!groups[day]) groups[day] = {trades:[],pnl:0,won:0,lost:0};
+      groups[day].trades.push(t);
+      groups[day].pnl += t.pnl;
+      if (t.pnl>0) groups[day].won++; else groups[day].lost++;
+    }
+
+    if (!trades.length) {
+      document.getElementById('a-hist-list').innerHTML = '<div class="empty">Δεν υπάρχουν trades ακόμα</div>';
+    } else {
+      document.getElementById('a-hist-list').innerHTML = Object.entries(groups).map(([date,g]) => `
+        <div>
+          <div class="day-header">
+            <div class="day-date">📅 ${date} <span style="color:var(--sub);font-size:11px">(${g.trades.length})</span></div>
+            <div class="day-right">
+              <div class="day-wl">
+                <span style="color:var(--green)">✅ ${g.won}</span>
+                <span style="color:var(--red)">❌ ${g.lost}</span>
+              </div>
+              <div class="day-pnl" style="color:${g.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(g.pnl)}</div>
+            </div>
+          </div>
+          ${g.trades.map(t => `
+            <div class="ana-day-row">
+              <div>
+                <div class="ana-sym">${t.symbol}</div>
+                <div class="ana-time">${new Date(t.time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:12px;color:var(--sub)">${t.tradeId?'#'+t.tradeId:'LOCAL'}</div>
+              <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:${t.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(t.pnl)}</div>
+              <div style="font-size:16px">${t.pnl>0?'✅':t.pnl<0?'❌':'—'}</div>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+
+    // Dashboard stats from local analytics
+    if (anaTab==='local') {
+      const pEl = document.getElementById('s-pnl');
+      pEl.textContent = fpnl(d.totalPnl);
+      pEl.className = 'stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+      document.getElementById('s-winrate').textContent  = (d.winRate||0)+'%';
+      document.getElementById('s-drawdown').textContent = (d.maxDrawdown||0)+'%';
+    }
 
   } catch(e) {
-    document.getElementById('a-hist-list').innerHTML=`<div class="empty">❌ ${e.message}</div>`;
+    document.getElementById('a-hist-list').innerHTML = `<div class="empty">❌ Σφάλμα: ${e.message}</div>`;
+    console.error('Analytics error:', e);
   }
 }
 

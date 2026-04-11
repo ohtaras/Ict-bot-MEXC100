@@ -1,37 +1,38 @@
 /**
  * bot.js — Κύριος βρόχος
- * LIMIT entry + 4h expiry + Software SL/TP + Sync
+ * LOCAL mode: signals → local first, user sends to MEXC manually
  */
 
 import { fetchCandles, fetchPrice, ping } from './mexc.js';
 import { ictCoreEngine, checkSignalTrigger, isSignalExpired, checkTradeExit } from './ictEngine.js';
 import {
-  executeSignal,
+  executeSignalLocal,
   hasOpenOrdersForSymbol,
   getActiveOrders,
   syncPositionsFromBinance,
   checkOrderFilled,
   checkAndCloseSLTP,
+  closeLocalOrder,
   getStats,
 } from './orderManager.js';
 
-let isRunning     = false;
-let scanTimer     = null;
-let priceTimer    = null;
-let slTpTimer     = null;
-let syncTimer     = null;
-let fillTimer     = null;
-let activePairs   = [];
-let allSignals    = [];  // Όλα τα signals (pending, triggered, expired, rejected)
-let executedKeys  = new Set();
-let lastScanTime  = null;
-let lastPrices    = {};
+let isRunning    = false;
+let scanTimer    = null;
+let priceTimer   = null;
+let slTpTimer    = null;
+let syncTimer    = null;
+let fillTimer    = null;
+let activePairs  = [];
+let allSignals   = [];
+let executedKeys = new Set();
+let lastScanTime = null;
+let lastPrices   = {};
 
 const SCAN_INTERVAL  = parseInt(process.env.SCAN_INTERVAL_MS  || '60000');
 const PRICE_INTERVAL = parseInt(process.env.PRICE_INTERVAL_MS || '15000');
-const SLTP_INTERVAL  = 5000;   // SL/TP check κάθε 5s
-const FILL_INTERVAL  = 15000;  // Fill check κάθε 15s
-const SYNC_INTERVAL  = 30000;  // Sync κάθε 30s
+const SLTP_INTERVAL  = 5000;
+const FILL_INTERVAL  = 15000;
+const SYNC_INTERVAL  = 30000;
 
 function log(msg) {
   console.log(`[${new Date().toLocaleTimeString('el-GR')}] ${msg}`);
@@ -68,7 +69,6 @@ async function runScan() {
     }
   }
 
-  // Κράτα τα τελευταία 500 signals
   if (allSignals.length > 500) allSignals = allSignals.slice(0, 500);
 
   const pending   = allSignals.filter(s => s.status === 'pending').length;
@@ -77,17 +77,15 @@ async function runScan() {
   log(`📋 Signals — Pending: ${pending} | Triggered: ${triggered} | Expired: ${expired}`);
 }
 
-// ─── PRICE CHECK + TRIGGER ────────────────────────────────────────────
+// ─── PRICE CHECK + TRIGGER ─────────────────────────────────────────────
+// Όταν τιμή μπει στο FVG → δημιουργεί LOCAL order (paper trading)
 
 async function runPriceCheck() {
   if (!isRunning) return;
-
   const pending = allSignals.filter(s => s.status === 'pending');
   if (pending.length === 0) return;
 
   for (const signal of pending) {
-
-    // Έλεγχος expiry
     if (isSignalExpired(signal)) {
       signal.status       = 'expired';
       signal.expiredAt    = Date.now();
@@ -102,26 +100,24 @@ async function runPriceCheck() {
 
       if (checkSignalTrigger(signal, price)) {
         log(`🎯 TRIGGER! ${signal.pair} [${signal.type}] @ ${price}`);
-
         signal.status = 'triggering';
 
-        // Μόνο μία θέση ανά pair
         const hasOpen = await hasOpenOrdersForSymbol(signal.pair);
         if (hasOpen) {
-          log(`⏭ ${signal.pair}: Υπάρχει ήδη ανοιχτή θέση → Rejected`);
+          log(`⏭ ${signal.pair}: Υπάρχει ήδη θέση → Rejected`);
           signal.status       = 'rejected';
           signal.rejectedAt   = Date.now();
           signal.rejectReason = 'position_exists';
           continue;
         }
 
-        const result = await executeSignal(signal);
+        // Πάντα local first
+        const result = await executeSignalLocal(signal);
 
         if (result.success) {
-          signal.status       = 'triggered';
-          signal.triggeredAt  = Date.now();
-          signal.limitOrderId = result.limitOrderId;
-          log(`✅ ${signal.pair}: LIMIT order τοποθετήθηκε @ ${result.entryPrice}`);
+          signal.status      = 'triggered';
+          signal.triggeredAt = Date.now();
+          log(`📋 ${signal.pair}: Τοπική εντολή δημιουργήθηκε @ ${result.entryPrice}`);
         } else {
           signal.status       = 'rejected';
           signal.rejectedAt   = Date.now();
@@ -138,7 +134,7 @@ async function runPriceCheck() {
   }
 }
 
-// ─── FILL CHECK ───────────────────────────────────────────────────────
+// ─── FILL CHECK (μόνο για real MEXC orders) ───────────────────────────
 
 async function runFillCheck() {
   if (!isRunning) return;
@@ -148,11 +144,14 @@ async function runFillCheck() {
   }
 }
 
-// ─── SOFTWARE SL/TP ───────────────────────────────────────────────────
+// ─── SL/TP CHECK ──────────────────────────────────────────────────────
+// Χειρίζεται και local και real MEXC orders
 
 async function runSLTPCheck() {
   if (!isRunning) return;
-  const openOrders = getActiveOrders().filter(o => o.status === 'open');
+  const openOrders = getActiveOrders().filter(o =>
+    o.status === 'open' || o.status === 'open_local'
+  );
   if (openOrders.length === 0) return;
 
   for (const order of openOrders) {
@@ -165,8 +164,15 @@ async function runSLTPCheck() {
 
       const exit = checkTradeExit(order.side, price, order.sl, order.tp);
       if (exit) {
-        log(`${exit === 'TP' ? '🎯' : '🛑'} ${exit} HIT! ${order.symbol} @ ${price}`);
-        await checkAndCloseSLTP(order.signalId, exit, price);
+        log(`${exit === 'TP' ? '🎯' : '🛑'} ${exit} HIT! ${order.symbol} @ ${price} [${order.isLocal ? 'LOCAL' : 'MEXC'}]`);
+
+        if (order.isLocal || order.status === 'open_local') {
+          // Simulation close — δεν καλεί το MEXC
+          closeLocalOrder(order.signalId, exit, price);
+        } else {
+          // Real MEXC close
+          await checkAndCloseSLTP(order.signalId, exit, price);
+        }
       }
     } catch (err) {
       log(`⚠️ SL/TP ${order.symbol}: ${err.message}`);
@@ -179,7 +185,9 @@ async function runSLTPCheck() {
 async function runSync() {
   if (!isRunning) return;
   try {
-    await syncPositionsFromBinance();
+    // Sync μόνο αν υπάρχουν real MEXC orders
+    const hasMexcOrders = getActiveOrders().some(o => !o.isLocal);
+    if (hasMexcOrders) await syncPositionsFromBinance();
   } catch (err) {
     log(`⚠️ Sync: ${err.message}`);
   }
@@ -197,9 +205,8 @@ export async function startBot(pairs) {
   isRunning   = true;
 
   log(`🚀 Bot ξεκίνησε! Pairs: ${activePairs.join(', ')}`);
-  log(`   Mode: ${process.env.USE_TESTNET === 'true' ? '🧪 DEMO' : '🔴 LIVE'}`);
+  log(`   Mode: LOCAL → MEXC on demand`);
 
-  await runSync();
   await runScan();
 
   scanTimer  = setInterval(runScan,       SCAN_INTERVAL);
@@ -213,8 +220,7 @@ export async function startBot(pairs) {
 
 export function stopBot() {
   isRunning = false;
-  [scanTimer, priceTimer, slTpTimer, fillTimer, syncTimer]
-    .forEach(t => t && clearInterval(t));
+  [scanTimer, priceTimer, slTpTimer, fillTimer, syncTimer].forEach(t => t && clearInterval(t));
   scanTimer = priceTimer = slTpTimer = fillTimer = syncTimer = null;
   log('🛑 Bot σταμάτησε');
 }
@@ -226,7 +232,7 @@ export function getBotStatus() {
     activePairs,
     lastScanTime: lastScanTime?.toISOString() || null,
     lastPrices,
-    mode:    process.env.USE_TESTNET === 'true' ? 'testnet' : 'live',
+    mode: 'local',
     stats,
     signals: {
       all:       allSignals.slice(0, 100),
@@ -237,6 +243,7 @@ export function getBotStatus() {
     },
     orders: {
       open:        getActiveOrders().filter(o => o.status === 'open'),
+      openLocal:   getActiveOrders().filter(o => o.status === 'open_local'),
       pendingFill: getActiveOrders().filter(o => o.status === 'pending_fill'),
     },
   };
