@@ -3,17 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ICT Bot</title>
+<title>8R@5 Bot</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--bg:#0f1117;--card:#16181f;--card2:#1c1f28;--line:#252836;--text:#e2e5ee;--sub:#5c6480;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--serif:'Playfair Display',serif}
+:root{--bg:#0f1117;--card:#16181f;--card2:#1c1f28;--line:#252836;--text:#e2e5ee;--hi:#ffffff;--sub:#5c6480;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--serif:'Playfair Display',serif;--shadow:rgba(0,0,0,.4);--hover-row:rgba(255,255,255,.015);--hover-item:rgba(255,255,255,.04)}
+[data-theme="light"]{--bg:#f0f4f9;--card:#ffffff;--card2:#e8edf5;--line:#d0d8ec;--text:#1a2035;--hi:#0a0f1e;--sub:#6b7a9e;--shadow:rgba(80,100,150,.15);--hover-row:rgba(0,0,0,.025);--hover-item:rgba(0,0,0,.04)}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
 .page{max-width:1280px;margin:0 auto;padding:24px 20px}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:12px}
 .brand{display:flex;align-items:baseline;gap:10px}
-.brand-name{font-family:var(--serif);font-size:24px;color:#fff}
+.brand-name{font-family:var(--serif);font-size:24px;color:var(--hi)}
 .brand-sub{font-size:11px;color:var(--sub);letter-spacing:2px;text-transform:uppercase}
 .hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid}
@@ -42,12 +43,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px}
 .stat{background:var(--card);padding:16px 18px}
 .stat-label{font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
-.stat-val{font-family:var(--mono);font-size:20px;font-weight:500;color:#fff}
+.stat-val{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--hi)}
 .sv-green{color:var(--green)}.sv-red{color:var(--red)}.sv-amber{color:var(--amber)}.sv-blue{color:var(--blue)}.sv-purple{color:var(--purple)}
 .prices{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .price-chip{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;flex:1;min-width:90px;display:flex;align-items:center;gap:8px}
 .price-sym{font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.5px}
-.price-val{font-family:var(--mono);font-size:13px;color:#fff}
+.price-val{font-family:var(--mono);font-size:13px;color:var(--hi)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
 .card-head{padding:13px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
 .card-head.nc{cursor:default}
@@ -67,15 +68,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .pop-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
 .pop-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--sub);font-family:var(--sans);transition:all .15s}
 .pop-btn:hover{color:var(--text);border-color:#2e3347}
-.pop-btn.on{color:#fff;border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08)}
+.pop-btn.on{color:var(--hi);border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.12)}
 .search-wrap{position:relative}
 .search-input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 14px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s}
 .search-input:focus{border-color:rgba(59,130,246,.4)}
 .search-input::placeholder{color:var(--sub)}
-.search-drop{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--card2);border:1px solid var(--line);border-radius:8px;max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.search-drop{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--card2);border:1px solid var(--line);border-radius:8px;max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px var(--shadow)}
 .search-drop.open{display:block}
 .search-item{padding:8px 14px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;transition:background .1s}
-.search-item:hover{background:rgba(255,255,255,.04)}
+.search-item:hover{background:var(--hover-item)}
 .search-item.taken{cursor:default;color:var(--sub)}
 .sig-tabs{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .sig-tab{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s}
@@ -88,11 +89,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .scroll::-webkit-scrollbar{width:3px}
 .scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
 .row{padding:13px 18px;border-bottom:1px solid rgba(37,40,54,.5);transition:background .12s}
-.row:hover{background:rgba(255,255,255,.015)}
+.row:hover{background:var(--hover-row)}
 .row:last-child{border-bottom:none}
 .row-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
 .row-left{display:flex;align-items:center;gap:8px}
-.row-symbol{font-size:14px;font-weight:700;color:#fff}
+.row-symbol{font-size:14px;font-weight:700;color:var(--hi)}
 .row-meta{font-size:11px;color:var(--sub);font-family:var(--mono);margin-bottom:6px}
 .risk-box{background:var(--card2);border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px}
 .risk-item{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
@@ -112,7 +113,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .trade-card{padding:15px 18px;border-bottom:1px solid rgba(37,40,54,.5)}
 .trade-card:last-child{border-bottom:none}
 .trade-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
-.trade-symbol{font-size:15px;font-weight:700;color:#fff}
+.trade-symbol{font-size:15px;font-weight:700;color:var(--hi)}
 .pnl-val{font-family:var(--mono);font-size:17px;font-weight:500}
 .pnl-pct{font-size:11px;color:var(--sub);margin-top:2px;text-align:right}
 .trade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
@@ -131,14 +132,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .day-wl{display:flex;gap:6px;font-size:11px}
 .hist-row{padding:11px 18px;border-bottom:1px solid rgba(37,40,54,.4);display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}
 .hist-row:last-child{border-bottom:none}
-.hist-sym{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px}
+.hist-sym{font-size:13px;font-weight:600;color:var(--hi);margin-bottom:2px}
 .hist-meta{font-size:10px;color:var(--sub);font-family:var(--mono)}
 
 /* ANALYTICS */
 .ana-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
 .ana-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
 .ana-label{font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
-.ana-val{font-family:var(--mono);font-size:26px;font-weight:500;color:#fff}
+.ana-val{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--hi)}
 .chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
 .chart-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px}
 .ana-loading{padding:60px;text-align:center;color:var(--sub);font-size:13px}
@@ -167,7 +168,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .modal-bg.open{display:flex}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px;max-width:360px;width:90%;text-align:center}
 .modal-icon{font-size:40px;margin-bottom:14px}
-.modal-title{font-family:var(--serif);font-size:20px;color:#fff;margin-bottom:8px}
+.modal-title{font-family:var(--serif);font-size:20px;color:var(--hi);margin-bottom:8px}
 .modal-desc{font-size:13px;color:var(--sub);margin-bottom:24px;line-height:1.7}
 .modal-btns{display:flex;gap:10px;justify-content:center}
 .mbtn{padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid;font-family:var(--sans);transition:all .15s}
@@ -176,6 +177,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .mbtn-gray{background:transparent;border-color:var(--line);color:var(--sub)}
 .mbtn-gray:hover{color:var(--text)}
 .footer{margin-top:20px;text-align:center;font-size:11px;color:var(--sub)}
+/* THEME TOGGLE */
+.btn-theme{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--sub);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.btn-theme:hover{border-color:var(--amber);color:var(--amber)}
+/* LUCKY 8 LOGO */
+.logo-wrap{display:flex;align-items:center;gap:12px}
+.logo-8{width:40px;height:40px;flex-shrink:0}
+/* LIGHT MODE overrides */
+[data-theme="light"] .nav-tab.on{box-shadow:0 1px 4px rgba(80,100,150,.15)}
+[data-theme="light"] .trade-card:hover{background:rgba(0,0,0,.015)}
+[data-theme="light"] .toast.ok{background:#dcfce7;color:#166534;border:1px solid #86efac}
+[data-theme="light"] .toast.err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+[data-theme="light"] .day-header{background:var(--card2)}
+[data-theme="light"] body{color:var(--text)}
 </style>
 </head>
 <body>
@@ -197,11 +211,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <div class="page">
 
   <div class="header">
-    <div class="brand">
-      <div class="brand-name">ICT Bot</div>
-      <div class="brand-sub">Trading System</div>
+    <div class="logo-wrap">
+      <svg class="logo-8" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g8" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f59e0b"/>
+            <stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+        </defs>
+        <circle cx="20" cy="20" r="18.5" stroke="url(#g8)" stroke-width="1.5"/>
+        <circle cx="20" cy="20" r="18.5" fill="url(#g8)" fill-opacity=".07"/>
+        <text x="20" y="27" text-anchor="middle" font-family="Georgia,serif" font-size="24" font-weight="700" fill="url(#g8)">8</text>
+      </svg>
+      <div class="brand">
+        <div class="brand-name">8R@5 Bot</div>
+        <div class="brand-sub">Trading System</div>
+      </div>
     </div>
     <div class="hright">
+      <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" title="Εναλλαγή θέματος">🌙</button>
       <span class="pill p-blue" id="mode-pill"><span class="dot"></span><span id="mode-txt">---</span></span>
       <span class="pill p-red"  id="run-pill"><span class="dot"></span><span id="run-txt">Σύνδεση...</span></span>
       <button class="btn btn-green" id="btn-start" onclick="startBot()">▶ Εκκίνηση</button>
@@ -423,6 +451,26 @@ let allSignals  = [];
 let sigFilter   = 'pending';
 let equityChart = null;
 let anaTab      = 'local';
+
+// ── THEME ─────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html  = document.documentElement;
+  const isDark = html.getAttribute('data-theme') !== 'light';
+  const next  = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  document.getElementById('btn-theme').textContent = next === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('theme', next);
+}
+
+// Apply saved theme on load
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  // btn-theme not rendered yet, set after DOM ready
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-theme').textContent = saved === 'light' ? '🌙' : '☀️';
+  });
+})();
 
 // ── COLLAPSE ──────────────────────────────────────────────────────────
 function toggleCard(id) {
