@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICT Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#16181f;--card2:#1c1f28;--line:#252836;--text:#e2e5ee;--sub:#5c6480;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;--sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--serif:'Playfair Display',serif}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:24px 20px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand-name{font-family:var(--serif);font-size:24px;color:#fff}
+.brand-sub{font-size:11px;color:var(--sub);letter-spacing:2px;text-transform:uppercase}
+.hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.p-green{color:var(--green);border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.06)}
+.p-red{color:var(--red);border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.06)}
+.p-blue{color:var(--blue);border-color:rgba(59,130,246,.25);background:rgba(59,130,246,.06)}
+.p-amber{color:var(--amber);border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-green{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:var(--green)}
+.btn-green:hover:not(:disabled){background:rgba(34,197,94,.18)}
+.btn-gray{background:var(--card2);border-color:var(--line);color:var(--sub)}
+.btn-gray:hover:not(:disabled){color:var(--text)}
+.btn-red{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.btn-red:hover:not(:disabled){background:#dc2626}
+.btn-amber{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--amber)}
+.btn-amber:hover:not(:disabled){background:rgba(245,158,11,.18)}
+.nav{display:flex;gap:2px;margin-bottom:24px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px}
+.nav-tab{padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .15s;border:none;background:none;font-family:var(--sans)}
+.nav-tab:hover:not(.on){color:var(--text)}
+.nav-tab.on{background:var(--card2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.page-content{display:none}
+.page-content.on{display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.stat{background:var(--card);padding:16px 18px}
+.stat-label{font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+.stat-val{font-family:var(--mono);font-size:20px;font-weight:500;color:#fff}
+.sv-green{color:var(--green)}.sv-red{color:var(--red)}.sv-amber{color:var(--amber)}.sv-blue{color:var(--blue)}.sv-purple{color:var(--purple)}
+.prices{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.price-chip{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;flex:1;min-width:90px;display:flex;align-items:center;gap:8px}
+.price-sym{font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.5px}
+.price-val{font-family:var(--mono);font-size:13px;color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.card-head{padding:13px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
+.card-head.nc{cursor:default}
+.card-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;display:flex;align-items:center;gap:8px}
+.card-right{display:flex;align-items:center;gap:8px}
+.card-count{background:var(--card2);border-radius:99px;padding:2px 8px;font-size:10px;color:var(--blue);font-family:var(--mono)}
+.chev{font-size:12px;color:var(--sub);transition:transform .2s}
+.card.collapsed .chev{transform:rotate(-90deg)}
+.card-body{overflow:hidden;transition:max-height .3s ease}
+.card-body.collapsed{max-height:0!important}
+.pairs-active{display:flex;flex-wrap:wrap;gap:6px;padding:14px 18px;border-bottom:1px solid var(--line);min-height:48px}
+.p-chip{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:500}
+.p-chip-x{cursor:pointer;color:var(--sub);font-size:14px;transition:color .15s}
+.p-chip-x:hover{color:var(--red)}
+.pairs-ctrl{padding:14px 18px}
+.pop-label{font-size:10px;color:var(--sub);font-weight:600;letter-spacing:.5px;margin-bottom:8px;text-transform:uppercase}
+.pop-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.pop-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--sub);font-family:var(--sans);transition:all .15s}
+.pop-btn:hover{color:var(--text);border-color:#2e3347}
+.pop-btn.on{color:#fff;border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08)}
+.search-wrap{position:relative}
+.search-input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 14px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:rgba(59,130,246,.4)}
+.search-input::placeholder{color:var(--sub)}
+.search-drop{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--card2);border:1px solid var(--line);border-radius:8px;max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.search-drop.open{display:block}
+.search-item{padding:8px 14px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;transition:background .1s}
+.search-item:hover{background:rgba(255,255,255,.04)}
+.search-item.taken{cursor:default;color:var(--sub)}
+.sig-tabs{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.sig-tab{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s}
+.sig-tab.pending{color:var(--amber);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.06)}
+.sig-tab.triggered{color:var(--green);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)}
+.sig-tab.expired{color:var(--sub);border-color:var(--line)}
+.sig-tab.rejected{color:var(--red);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06)}
+.sig-tab:not(.on){opacity:.45}
+.scroll{max-height:460px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+.row{padding:13px 18px;border-bottom:1px solid rgba(37,40,54,.5);transition:background .12s}
+.row:hover{background:rgba(255,255,255,.015)}
+.row:last-child{border-bottom:none}
+.row-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.row-left{display:flex;align-items:center;gap:8px}
+.row-symbol{font-size:14px;font-weight:700;color:#fff}
+.row-meta{font-size:11px;color:var(--sub);font-family:var(--mono);margin-bottom:6px}
+.risk-box{background:var(--card2);border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px}
+.risk-item{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
+.risk-val{font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:var(--text)}
+.tag{display:inline-block;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.5px}
+.tag-bull{background:rgba(34,197,94,.1);color:var(--green)}
+.tag-bear{background:rgba(239,68,68,.1);color:var(--red)}
+.tag-long{background:rgba(34,197,94,.1);color:var(--green)}
+.tag-short{background:rgba(239,68,68,.1);color:var(--red)}
+.tag-rr{background:rgba(59,130,246,.1);color:var(--blue);font-size:10px;padding:3px 7px;border-radius:5px}
+.st-pending{color:var(--amber);font-size:11px;font-weight:500}
+.st-triggered{color:var(--blue);font-size:11px;font-weight:500}
+.st-open{color:var(--green);font-size:11px;font-weight:500}
+.st-fill{color:var(--purple);font-size:11px;font-weight:500}
+.st-expired{color:var(--sub);font-size:11px}
+.st-rejected{color:var(--red);font-size:11px}
+.trade-card{padding:15px 18px;border-bottom:1px solid rgba(37,40,54,.5)}
+.trade-card:last-child{border-bottom:none}
+.trade-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.trade-symbol{font-size:15px;font-weight:700;color:#fff}
+.pnl-val{font-family:var(--mono);font-size:17px;font-weight:500}
+.pnl-pct{font-size:11px;color:var(--sub);margin-top:2px;text-align:right}
+.trade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.tg-item{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
+.tg-val{font-family:var(--mono);font-size:12px;color:var(--text);margin-top:3px}
+.prog-track{height:3px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:8px}
+.prog-fill{height:100%;border-radius:99px;transition:width .5s}
+.trade-footer{display:flex;align-items:center;justify-content:space-between}
+.trade-meta{font-size:10px;color:var(--sub);font-family:var(--mono)}
+.btn-close-trade{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:var(--red);font-family:var(--sans);transition:all .15s}
+.btn-close-trade:hover{background:rgba(239,68,68,.14);border-color:var(--red)}
+.day-header{padding:9px 18px;display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-bottom:1px solid var(--line)}
+.day-date{font-size:12px;font-weight:600;color:var(--text)}
+.day-right{display:flex;align-items:center;gap:12px}
+.day-pnl{font-family:var(--mono);font-size:13px;font-weight:600}
+.day-wl{display:flex;gap:6px;font-size:11px}
+.hist-row{padding:11px 18px;border-bottom:1px solid rgba(37,40,54,.4);display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}
+.hist-row:last-child{border-bottom:none}
+.hist-sym{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px}
+.hist-meta{font-size:10px;color:var(--sub);font-family:var(--mono)}
+
+/* ANALYTICS */
+.ana-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.ana-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.ana-label{font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.ana-val{font-family:var(--mono);font-size:26px;font-weight:500;color:#fff}
+.chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+.chart-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px}
+.ana-loading{padding:60px;text-align:center;color:var(--sub);font-size:13px}
+.ana-day-row{padding:10px 18px;border-bottom:1px solid rgba(37,40,54,.4);display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center}
+.ana-day-row:last-child{border-bottom:none}
+.ana-sym{font-size:12px;font-weight:600;color:var(--text)}
+.ana-time{font-size:10px;color:var(--sub);font-family:var(--mono)}
+
+/* SETTINGS */
+.set-section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+.set-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;display:block}
+.form-hint{font-size:11px;color:var(--sub);margin-bottom:6px}
+.form-input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:9px 14px;color:var(--text);font-family:var(--mono);font-size:14px;outline:none;transition:border-color .15s}
+.form-input:focus{border-color:rgba(59,130,246,.4)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.info-box{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;color:var(--sub);line-height:1.8}
+.info-box strong{color:var(--text)}
+.empty{padding:48px;text-align:center;color:var(--sub);font-size:13px}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:#166534;color:#bbf7d0;border:1px solid #15803d}
+.toast.err{background:#7f1d1d;color:#fecaca;border:1px solid #b91c1c}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px;max-width:360px;width:90%;text-align:center}
+.modal-icon{font-size:40px;margin-bottom:14px}
+.modal-title{font-family:var(--serif);font-size:20px;color:#fff;margin-bottom:8px}
+.modal-desc{font-size:13px;color:var(--sub);margin-bottom:24px;line-height:1.7}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.mbtn{padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid;font-family:var(--sans);transition:all .15s}
+.mbtn-red{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:var(--red)}
+.mbtn-red:hover{background:rgba(239,68,68,.2)}
+.mbtn-gray{background:transparent;border-color:var(--line);color:var(--sub)}
+.mbtn-gray:hover{color:var(--text)}
+.footer{margin-top:20px;text-align:center;font-size:11px;color:var(--sub)}
+</style>
+</head>
+<body>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">Ακύρωση όλων</div>
+    <div class="modal-desc">Θα ακυρωθούν αμέσως όλες οι ανοιχτές εντολές.<br>Η ενέργεια δεν αναιρείται.</div>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-red" onclick="confirmPanic()">Ναι, ακύρωσε</button>
+      <button class="mbtn mbtn-gray" onclick="closeModal()">Άκυρο</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="page">
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-name">ICT Bot</div>
+      <div class="brand-sub">Trading System</div>
+    </div>
+    <div class="hright">
+      <span class="pill p-blue" id="mode-pill"><span class="dot"></span><span id="mode-txt">---</span></span>
+      <span class="pill p-red"  id="run-pill"><span class="dot"></span><span id="run-txt">Σύνδεση...</span></span>
+      <button class="btn btn-green" id="btn-start" onclick="startBot()">▶ Εκκίνηση</button>
+      <button class="btn btn-gray"  id="btn-stop"  onclick="stopBot()">■ Σταμάτημα</button>
+      <button class="btn btn-red"   onclick="showModal()">⛔ Panic</button>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-tab on" onclick="showPage('dashboard',this)">Dashboard</button>
+    <button class="nav-tab"    onclick="showPage('signals',this)">Signals</button>
+    <button class="nav-tab"    onclick="showPage('trades',this)">Trades</button>
+    <button class="nav-tab"    onclick="showPage('analytics',this)">Analytics</button>
+    <button class="nav-tab"    onclick="showPage('settings',this)">Settings</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page-content on" id="page-dashboard">
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Balance</div><div class="stat-val" id="s-balance">—</div></div>
+      <div class="stat"><div class="stat-label">Total P&L</div><div class="stat-val" id="s-pnl">—</div></div>
+      <div class="stat"><div class="stat-label">Win Rate</div><div class="stat-val sv-green" id="s-winrate">—</div></div>
+      <div class="stat"><div class="stat-label">Max Drawdown</div><div class="stat-val sv-amber" id="s-drawdown">—</div></div>
+      <div class="stat"><div class="stat-label">Ανοιχτές</div><div class="stat-val sv-blue" id="s-open">0</div></div>
+      <div class="stat"><div class="stat-label">Pending</div><div class="stat-val sv-purple" id="s-pending">0</div></div>
+    </div>
+    <div class="prices" id="prices"></div>
+    <div class="card" id="card-pairs">
+      <div class="card-head" onclick="toggleCard('pairs')">
+        <span class="card-title">📊 Παρακολούθηση Pairs</span>
+        <span class="chev">▼</span>
+      </div>
+      <div class="card-body" id="body-pairs" style="max-height:600px">
+        <div class="pairs-active" id="pairs-active"></div>
+        <div class="pairs-ctrl">
+          <div class="pop-label">Δημοφιλή</div>
+          <div class="pop-chips" id="pop-chips"></div>
+          <div class="search-wrap">
+            <input class="search-input" id="search" placeholder="Αναζήτηση pair... BNB, AVAX, LINK"
+              oninput="onSearch(this.value)" onblur="setTimeout(closeSearch,180)">
+            <div class="search-drop" id="search-drop"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGNALS -->
+  <div class="page-content" id="page-signals">
+    <div class="card">
+      <div class="card-head nc">
+        <span class="card-title">📡 ICT Signals</span>
+        <span class="card-count" id="sig-total">0</span>
+      </div>
+      <div class="sig-tabs">
+        <div class="sig-tab pending on" onclick="filterSig('pending',this)">⏳ Pending <span id="cnt-pending">0</span></div>
+        <div class="sig-tab triggered"  onclick="filterSig('triggered',this)">✅ Triggered <span id="cnt-triggered">0</span></div>
+        <div class="sig-tab expired"    onclick="filterSig('expired',this)">⏰ Expired <span id="cnt-expired">0</span></div>
+        <div class="sig-tab rejected"   onclick="filterSig('rejected',this)">🚫 Rejected <span id="cnt-rejected">0</span></div>
+      </div>
+      <div class="scroll" id="list-signals">
+        <div class="empty">Αναμονή signals...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRADES -->
+  <div class="page-content" id="page-trades">
+    <div class="card" id="card-open">
+      <div class="card-head" onclick="toggleCard('open')">
+        <span class="card-title">● Ανοιχτές Θέσεις</span>
+        <div class="card-right">
+          <span class="card-count" id="open-count">0</span>
+          <span class="chev">▼</span>
+        </div>
+      </div>
+      <div class="card-body" id="body-open" style="max-height:800px">
+        <div class="scroll" id="list-open">
+          <div class="empty">Δεν υπάρχουν ανοιχτές θέσεις</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="card-history">
+      <div class="card-head" onclick="toggleCard('history')">
+        <span class="card-title">📊 Trade History (από MEXC)</span>
+        <div class="card-right">
+          <span class="card-count" id="hist-count">0</span>
+          <span class="chev">▼</span>
+        </div>
+      </div>
+      <div class="card-body" id="body-history" style="max-height:600px">
+        <div class="scroll" id="list-history">
+          <div class="empty">Φόρτωση...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="page-content" id="page-analytics">
+    <div class="ana-grid">
+      <div class="ana-card"><div class="ana-label">Win Rate</div><div class="ana-val sv-green" id="a-winrate">—</div></div>
+      <div class="ana-card"><div class="ana-label">Profit Factor</div><div class="ana-val sv-blue" id="a-pf">—</div></div>
+      <div class="ana-card"><div class="ana-label">Max Drawdown</div><div class="ana-val sv-amber" id="a-dd">—</div></div>
+      <div class="ana-card"><div class="ana-label">Total Trades</div><div class="ana-val sv-purple" id="a-total">—</div></div>
+      <div class="ana-card"><div class="ana-label">Won</div><div class="ana-val sv-green" id="a-won">—</div></div>
+      <div class="ana-card"><div class="ana-label">Lost</div><div class="ana-val sv-red" id="a-lost">—</div></div>
+      <div class="ana-card"><div class="ana-label">Total P&L</div><div class="ana-val" id="a-pnl">—</div></div>
+      <div class="ana-card"><div class="ana-label">Net P&L (με fees)</div><div class="ana-val" id="a-net">—</div></div>
+      <div class="ana-card"><div class="ana-label">Funding Fees</div><div class="ana-val sv-red" id="a-funding">—</div></div>
+      <div class="ana-card"><div class="ana-label">Commissions</div><div class="ana-val sv-red" id="a-comm">—</div></div>
+      <div class="ana-card"><div class="ana-label">Current Balance</div><div class="ana-val" id="a-balance">—</div></div>
+      <div class="ana-card"><div class="ana-label">Unrealized P&L</div><div class="ana-val" id="a-unrealized">—</div></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">📈 Equity Curve (από MEXC)</div>
+      <canvas id="equity-chart" height="260"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-head nc">
+        <span class="card-title">📋 Trade History από MEXC</span>
+        <span class="card-count" id="a-hist-count">0</span>
+      </div>
+      <div class="scroll" id="a-hist-list">
+        <div class="ana-loading">Κάνε κλικ στο Analytics για φόρτωση...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page-content" id="page-settings">
+    <div class="set-section">
+      <div class="set-title">⚙️ Trading Settings</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Risk Per Trade (%)</label>
+          <div class="form-hint">Ποσοστό balance που ρισκάρεται σε κάθε trade (1-2%)</div>
+          <input class="form-input" type="number" id="set-risk" min="0.1" max="10" step="0.1" value="2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initial Balance ($)</label>
+          <div class="form-hint">Αρχικό κεφάλαιο για equity curve</div>
+          <input class="form-input" type="number" id="set-balance" min="100" step="100" value="10000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Leverage (x)</label>
+          <div class="form-hint">Μόχλευση Futures (5-10x)</div>
+          <input class="form-input" type="number" id="set-leverage" min="1" max="20" step="1" value="10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scan Interval (δευτερόλεπτα)</label>
+          <div class="form-hint">Πόσο συχνά σκανάρει για signals</div>
+          <input class="form-input" type="number" id="set-scan" min="30" max="300" step="10" value="60">
+        </div>
+      </div>
+      <button class="btn btn-amber" onclick="saveSettings()" style="width:100%;justify-content:center;padding:10px">
+        💾 Αποθήκευση Ρυθμίσεων
+      </button>
+    </div>
+    <div class="set-section">
+      <div class="set-title">ℹ️ Πώς Λειτουργεί</div>
+      <div class="info-box">
+        🛰 <strong>Data:</strong> MEXC Futures live τιμές κάθε 15s + candlestick (1H) κάθε 60s.<br>
+        🧠 <strong>ICT:</strong> Liquidity Sweep → Market Structure Shift → Fair Value Gap.<br>
+        📋 <strong>Signals:</strong> 4h για ενεργοποίηση — αλλιώς λήγουν αυτόματα.<br>
+        💼 <strong>Entry:</strong> LIMIT order στο ακριβές FVG entry price.<br>
+        🛡 <strong>SL/TP:</strong> Software monitoring κάθε 5s με MARKET close.<br>
+        📊 <strong>Analytics:</strong> 100% από MEXC — πραγματικά δεδομένα.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer">ICT Bot · Ανανέωση κάθε 15s</div>
+</div>
+
+<script>
+const API = '';
+const POPULAR = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT','NEARUSDT','ARBUSDT','OPUSDT','INJUSDT','SUIUSDT','APTUSDT','ATOMUSDT','LTCUSDT','UNIUSDT','FILUSDT'];
+const ALL_PAIRS = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT','LTCUSDT','UNIUSDT','ATOMUSDT','ETCUSDT','XLMUSDT','BCHUSDT','FILUSDT','APTUSDT','ARBUSDT','OPUSDT','INJUSDT','SUIUSDT','FETUSDT','NEARUSDT','ALGOUSDT','VETUSDT','ICPUSDT','SANDUSDT','MANAUSDT','AAVEUSDT','MKRUSDT','CRVUSDT','LDOUSDT','STXUSDT','RUNEUSDT','EGLDUSDT','KSMUSDT','ZECUSDT','WLDUSDT','PENDLEUSDT','JUPUSDT','ORDIUSDT','GMXUSDT','DYDXUSDT','IMXUSDT','GALAUSDT','ENSUSDT','WOOUSDT','1000PEPEUSDT','1000SHIBUSDT','1000BONKUSDT','SEIUSDT','TIAUSDT','PYTHUSDT'];
+
+let activePairs = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT'];
+let allSignals  = [];
+let sigFilter   = 'pending';
+let equityChart = null;
+
+// ── COLLAPSE ──────────────────────────────────────────────────────────
+function toggleCard(id) {
+  const body = document.getElementById('body-'+id);
+  const card = document.getElementById('card-'+id);
+  body.classList.toggle('collapsed');
+  card.classList.toggle('collapsed');
+}
+
+// ── PAGES ─────────────────────────────────────────────────────────────
+function showPage(name, el) {
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('page-'+name).classList.add('on');
+  if (name==='analytics') loadAnalytics();
+  if (name==='settings')  loadSettingsUI();
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────
+function showModal()  { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+async function confirmPanic() {
+  closeModal();
+  try {
+    const r=await fetch(API+'/cancel-all',{method:'POST'});
+    const d=await r.json();
+    toast(`Ακυρώθηκαν ${d.cancelled} εντολές`,'ok');
+    await refresh();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+// ── BOT ───────────────────────────────────────────────────────────────
+async function startBot() {
+  const btn=document.getElementById('btn-start');
+  btn.disabled=true; btn.textContent='Εκκίνηση...';
+  try {
+    const r=await fetch(API+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:activePairs})});
+    const d=await r.json();
+    toast(d.success?'✓ Bot ξεκίνησε':d.error,d.success?'ok':'err');
+    await refresh();
+  } catch(e) { toast(e.message,'err'); }
+  btn.disabled=false; btn.textContent='▶ Εκκίνηση';
+}
+
+async function stopBot() {
+  document.getElementById('btn-stop').disabled=true;
+  try { await fetch(API+'/stop',{method:'POST'}); toast('Bot σταμάτησε','ok'); await refresh(); }
+  catch(e) { toast(e.message,'err'); }
+  document.getElementById('btn-stop').disabled=false;
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────
+async function loadSettingsUI() {
+  try {
+    const r=await fetch(API+'/settings');
+    const s=await r.json();
+    document.getElementById('set-risk').value    = s.riskPercent    || 2;
+    document.getElementById('set-balance').value = s.initialBalance || 10000;
+    document.getElementById('set-leverage').value= s.leverage       || 10;
+    document.getElementById('set-scan').value    = s.scanInterval   || 60;
+  } catch {}
+}
+
+async function saveSettings() {
+  const s={
+    riskPercent:    parseFloat(document.getElementById('set-risk').value),
+    initialBalance: parseFloat(document.getElementById('set-balance').value),
+    leverage:       parseInt(document.getElementById('set-leverage').value),
+    scanInterval:   parseInt(document.getElementById('set-scan').value),
+  };
+  try {
+    const r=await fetch(API+'/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});
+    const d=await r.json();
+    toast(d.success?'✓ Αποθηκεύτηκαν':d.error,d.success?'ok':'err');
+  } catch(e) { toast(e.message,'err'); }
+}
+
+// ── ANALYTICS (100% από MEXC) ──────────────────────────────────────
+async function loadAnalytics() {
+  document.getElementById('a-hist-list').innerHTML='<div class="ana-loading">⏳ Φόρτωση από MEXC...</div>';
+
+  try {
+    const r = await fetch(API+'/analytics');
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+
+    // Stats
+    document.getElementById('a-winrate').textContent  = (d.winRate||0)+'%';
+    document.getElementById('a-winrate').className    = 'ana-val '+(d.winRate>=50?'sv-green':'sv-red');
+    document.getElementById('a-pf').textContent       = d.profitFactor||'—';
+    document.getElementById('a-dd').textContent       = (d.maxDrawdown||0)+'%';
+    document.getElementById('a-total').textContent    = d.totalTrades||0;
+    document.getElementById('a-won').textContent      = d.won||0;
+    document.getElementById('a-lost').textContent     = d.lost||0;
+
+    const pnlEl=document.getElementById('a-pnl');
+    pnlEl.textContent=fpnl(d.totalPnl);
+    pnlEl.className='ana-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+
+    const netEl=document.getElementById('a-net');
+    netEl.textContent=fpnl(d.netPnl);
+    netEl.className='ana-val '+(d.netPnl>=0?'sv-green':'sv-red');
+
+    document.getElementById('a-funding').textContent  = fpnl(d.totalFunding);
+    document.getElementById('a-comm').textContent     = fpnl(d.totalCommissions);
+    document.getElementById('a-balance').textContent  = '$'+(d.currentBalance||0).toFixed(2);
+    document.getElementById('a-unrealized').textContent = fpnl(d.unrealizedPnl);
+
+    // Equity Chart
+    if (d.equity && d.equity.length > 1) {
+      const labels = d.equity.map(e => new Date(e.time).toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit'}));
+      const data   = d.equity.map(e => e.balance);
+
+      if (equityChart) equityChart.destroy();
+      equityChart = new Chart(document.getElementById('equity-chart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Balance',
+            data,
+            borderColor:     '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,.06)',
+            borderWidth:     2,
+            fill:            true,
+            tension:         0.4,
+            pointRadius:     2,
+            pointHoverRadius: 5,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}} },
+          scales: {
+            x: { grid:{color:'rgba(37,40,54,.5)'}, ticks:{color:'#5c6480',font:{size:10}} },
+            y: { grid:{color:'rgba(37,40,54,.5)'}, ticks:{color:'#5c6480',font:{size:10},callback:v=>'$'+v} }
+          }
+        }
+      });
+    } else {
+      const ctx=document.getElementById('equity-chart').getContext('2d');
+      ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+      ctx.fillStyle='#5c6480'; ctx.font='13px DM Sans'; ctx.textAlign='center';
+      ctx.fillText('Δεν υπάρχουν αρκετά δεδομένα ακόμα',ctx.canvas.width/2,130);
+    }
+
+    // Trade list από MEXC
+    const trades = d.trades || [];
+    document.getElementById('a-hist-count').textContent = trades.length;
+
+    // Ομαδοποίηση ανά ημέρα
+    const groups = {};
+    for (const t of trades) {
+      const day = new Date(t.time).toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+      if (!groups[day]) groups[day]={trades:[],pnl:0,won:0,lost:0};
+      groups[day].trades.push(t);
+      groups[day].pnl  += t.pnl;
+      if (t.pnl>0) groups[day].won++; else groups[day].lost++;
+    }
+
+    if (!trades.length) {
+      document.getElementById('a-hist-list').innerHTML='<div class="empty">Δεν υπάρχουν trades ακόμα</div>';
+    } else {
+      document.getElementById('a-hist-list').innerHTML=Object.entries(groups).map(([date,g])=>`
+        <div>
+          <div class="day-header">
+            <div class="day-date">📅 ${date} <span style="color:var(--sub);font-size:11px">(${g.trades.length})</span></div>
+            <div class="day-right">
+              <div class="day-wl">
+                <span style="color:var(--green)">✅ ${g.won}</span>
+                <span style="color:var(--red)">❌ ${g.lost}</span>
+              </div>
+              <div class="day-pnl" style="color:${g.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(g.pnl)}</div>
+            </div>
+          </div>
+          ${g.trades.map(t=>`
+            <div class="ana-day-row">
+              <div>
+                <div class="ana-sym">${t.symbol}</div>
+                <div class="ana-time">${new Date(t.time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
+              </div>
+              <div style="font-family:var(--mono);font-size:12px;color:var(--sub)">#${t.tradeId||'—'}</div>
+              <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:${t.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(t.pnl)}</div>
+              <div style="font-size:16px">${t.pnl>0?'✅':t.pnl<0?'❌':'—'}</div>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+
+  } catch(e) {
+    document.getElementById('a-hist-list').innerHTML=`<div class="empty">❌ Σφάλμα: ${e.message}</div>`;
+    console.error('Analytics error:',e);
+  }
+}
+
+// ── PAIRS ─────────────────────────────────────────────────────────────
+function renderPairs() {
+  document.getElementById('pairs-active').innerHTML=
+    activePairs.map(p=>`<div class="p-chip"><span>${p.replace('USDT','/USDT')}</span><span class="p-chip-x" onclick="removePair('${p}')">×</span></div>`).join('')||
+    '<span style="color:var(--sub);font-size:12px">Δεν υπάρχουν pairs</span>';
+  document.querySelectorAll('.pop-btn').forEach(b=>b.classList.toggle('on',activePairs.includes(b.dataset.p)));
+}
+
+function renderPopular() {
+  document.getElementById('pop-chips').innerHTML=POPULAR.map(p=>`
+    <button class="pop-btn ${activePairs.includes(p)?'on':''}" data-p="${p}" onclick="togglePair('${p}')">${p.replace('USDT','')}</button>`).join('');
+}
+
+function togglePair(sym) {
+  activePairs.includes(sym)?(activePairs=activePairs.filter(x=>x!==sym)):activePairs.push(sym);
+  renderPairs(); syncPairs();
+}
+
+function removePair(p) {
+  activePairs=activePairs.filter(x=>x!==p); renderPairs(); renderPopular(); syncPairs();
+}
+
+function onSearch(q) {
+  const drop=document.getElementById('search-drop');
+  if(!q.trim()){drop.classList.remove('open');return;}
+  const qc=q.toUpperCase().replace(/[\/\-]/g,'');
+  const res=ALL_PAIRS.filter(p=>p.includes(qc)).slice(0,12);
+  if(!res.length){drop.classList.remove('open');return;}
+  drop.innerHTML=res.map(p=>{
+    const on=activePairs.includes(p);
+    return`<div class="search-item ${on?'taken':''}" ${!on?`onclick="addPair('${p}')"`:''}">
+      <span style="font-weight:500">${p.replace('USDT','/USDT')}</span>
+      ${on?'<span style="color:var(--green);font-size:10px">✓</span>':'<span style="color:var(--sub);font-size:10px">+</span>'}
+    </div>`;
+  }).join('');
+  drop.classList.add('open');
+}
+
+function addPair(sym) {
+  if(!activePairs.includes(sym)){activePairs.push(sym);renderPairs();renderPopular();syncPairs();toast('+'+sym,'ok');}
+  document.getElementById('search').value=''; closeSearch();
+}
+
+function closeSearch(){document.getElementById('search-drop').classList.remove('open');}
+
+async function syncPairs() {
+  try{await fetch(API+'/pairs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:activePairs})});}catch{}
+}
+
+// ── SIG FILTER ────────────────────────────────────────────────────────
+function filterSig(f,el) {
+  sigFilter=f;
+  document.querySelectorAll('.sig-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  renderSignals(allSignals);
+}
+
+// ── CLOSE TRADE ───────────────────────────────────────────────────────
+async function closeTrade(signalId,symbol,currentPrice) {
+  if(!confirm(`Κλείσιμο ${symbol};`))return;
+  try {
+    const r=await fetch(API+'/cancel/'+signalId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({currentPrice})});
+    const d=await r.json();
+    toast(d.success?`${symbol} κλείστηκε`:d.error,d.success?'ok':'err');
+    await refresh();
+  } catch(e){toast(e.message,'err');}
+}
+
+// ── FORMAT ────────────────────────────────────────────────────────────
+function fp(v,sym) {
+  if(!v&&v!==0)return'—';
+  if(sym?.includes('BTC'))return'$'+parseFloat(v).toLocaleString('en',{minimumFractionDigits:1,maximumFractionDigits:1});
+  return'$'+parseFloat(v).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:5});
+}
+function fpnl(v){if(v===undefined||v===null)return'—';return(v>=0?'+':'')+' $'+Math.abs(parseFloat(v)).toFixed(2);}
+function fdt(ts){if(!ts)return'—';return new Date(ts).toLocaleString('el-GR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function fdur(ms){if(!ms||ms<0)return'—';const m=Math.floor(ms/60000);if(m<60)return m+'m';const h=Math.floor(m/60);if(h<24)return h+'h '+(m%60)+'m';return Math.floor(h/24)+'d '+(h%24)+'h';}
+
+// ── RENDER SIGNALS ────────────────────────────────────────────────────
+function renderSignals(signals) {
+  const filtered=signals.filter(s=>s.status===sigFilter);
+  const el=document.getElementById('list-signals');
+  document.getElementById('cnt-pending').textContent  =signals.filter(s=>s.status==='pending').length;
+  document.getElementById('cnt-triggered').textContent=signals.filter(s=>s.status==='triggered').length;
+  document.getElementById('cnt-expired').textContent  =signals.filter(s=>s.status==='expired').length;
+  document.getElementById('cnt-rejected').textContent =signals.filter(s=>s.status==='rejected').length;
+  document.getElementById('sig-total').textContent    =signals.length;
+  document.getElementById('s-pending').textContent    =signals.filter(s=>s.status==='pending').length;
+
+  if(!filtered.length){el.innerHTML='<div class="empty">Δεν υπάρχουν signals σε αυτή την κατηγορία</div>';return;}
+
+  const groups={};
+  for(const s of filtered){
+    const d=new Date(s.detectedAt||s.timestamp);
+    const key=d.toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+    if(!groups[key])groups[key]=[];
+    groups[key].push(s);
+  }
+
+  el.innerHTML=Object.entries(groups).map(([date,sigs])=>`
+    <div>
+      <div style="padding:7px 18px;background:var(--card2);border-bottom:1px solid var(--line);font-size:10px;color:var(--sub);font-weight:600;letter-spacing:.5px">
+        📅 ${date} · ${sigs.length} signals
+      </div>
+      ${sigs.map(s=>{
+        const bull=s.type==='BULLISH';
+        const stMap={pending:'⏳ Pending',triggered:'✅ Triggered',expired:'⏰ Expired',rejected:'🚫 Rejected'};
+        const scMap={pending:'st-pending',triggered:'st-triggered',expired:'st-expired',rejected:'st-rejected'};
+        const expLeft=s.expireAt&&s.status==='pending'?Math.max(0,Math.round((s.expireAt-Date.now())/60000)):null;
+        return`<div class="row">
+          <div class="row-top">
+            <div class="row-left">
+              <span class="row-symbol">${s.pair}</span>
+              <span class="tag ${bull?'tag-bull':'tag-bear'}">${bull?'BULL':'BEAR'}</span>
+              <span class="tag-rr">R:R 2.5</span>
+            </div>
+            <div class="${scMap[s.status]||'st-expired'}">${stMap[s.status]||s.status}</div>
+          </div>
+          <div class="row-meta">
+            Entry: <strong style="color:var(--amber)">${fp(s.entry,s.pair)}</strong>
+            &nbsp;·&nbsp; SL: <span style="color:var(--red)">${fp(s.sl,s.pair)}</span>
+            &nbsp;·&nbsp; TP: <span style="color:var(--green)">${fp(s.tp,s.pair)}</span>
+          </div>
+          <div class="risk-box">
+            <div class="risk-item">Position Size<div class="risk-val">${s.positionSize?'$'+parseFloat(s.positionSize).toFixed(2):'—'}</div></div>
+            <div class="risk-item">Target Profit<div class="risk-val" style="color:var(--green)">${s.potentialProfit?'+$'+parseFloat(s.potentialProfit).toFixed(2):'—'}</div></div>
+            <div class="risk-item">Max Loss<div class="risk-val" style="color:var(--red)">${s.potentialLoss?'-$'+parseFloat(s.potentialLoss).toFixed(2):'—'}</div></div>
+          </div>
+          <div style="font-size:10px;color:var(--sub);font-family:var(--mono)">
+            🕐 ${fdt(s.detectedAt||s.timestamp)}
+            ${expLeft!==null?` · ⏳ Λήγει σε ${expLeft}m`:''}
+            ${s.rejectReason?` · 🚫 ${s.rejectReason}`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+// ── RENDER OPEN ───────────────────────────────────────────────────────
+function renderOpen(positions) {
+  const el=document.getElementById('list-open');
+  document.getElementById('open-count').textContent=positions.length;
+  document.getElementById('s-open').textContent=positions.length;
+  if(!positions.length){el.innerHTML='<div class="empty">Δεν υπάρχουν ανοιχτές θέσεις</div>';return;}
+
+  el.innerHTML=positions.map(p=>{
+    const long=p.side==='BUY';
+    const isPending=p.status==='pending_fill';
+    const pnlPos=(p.pnl||0)>=0;
+    const range=Math.abs((p.tp||0)-(p.sl||0));
+    const prog=!isPending&&range>0?Math.max(0,Math.min(100,Math.abs((p.currentPrice||0)-(p.sl||0))/range*100)):0;
+    return`<div class="trade-card">
+      <div class="trade-top">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="trade-symbol">${p.symbol}</span>
+          <span class="tag ${long?'tag-long':'tag-short'}">${long?'LONG':'SHORT'}</span>
+          ${isPending?'<span class="st-fill">⏳ Αναμονή fill</span>':'<span class="st-open">● Open</span>'}
+        </div>
+        <div>
+          ${isPending?'<div style="color:var(--sub);font-size:12px">Εκκρεμεί...</div>'
+            :`<div class="pnl-val" style="color:${pnlPos?'var(--green)':'var(--red)'}">${fpnl(p.pnl)}</div>
+              <div class="pnl-pct">${(p.pnlPct||0)>=0?'+':''}${(p.pnlPct||0).toFixed(2)}%</div>`}
+        </div>
+      </div>
+      <div class="trade-grid">
+        <div class="tg-item">Entry<div class="tg-val">${fp(p.entryPrice,p.symbol)}</div></div>
+        <div class="tg-item">Τρέχουσα<div class="tg-val" style="color:var(--blue)">${isPending?'—':fp(p.currentPrice,p.symbol)}</div></div>
+        <div class="tg-item">Stop Loss<div class="tg-val" style="color:var(--red)">${p.sl?fp(p.sl,p.symbol):'—'}</div></div>
+        <div class="tg-item">Take Profit<div class="tg-val" style="color:var(--green)">${p.tp?fp(p.tp,p.symbol):'—'}</div></div>
+      </div>
+      ${!isPending?`<div class="prog-track"><div class="prog-fill" style="width:${prog}%;background:${pnlPos?'var(--green)':'var(--red)'}"></div></div>`:''}
+      <div class="risk-box" style="margin-bottom:10px">
+        <div class="risk-item">Position Size<div class="risk-val">${p.positionSize?'$'+parseFloat(p.positionSize).toFixed(2):'—'}</div></div>
+        <div class="risk-item">Target Profit<div class="risk-val" style="color:var(--green)">${p.potentialProfit?'+$'+parseFloat(p.potentialProfit).toFixed(2):'—'}</div></div>
+        <div class="risk-item">Max Loss<div class="risk-val" style="color:var(--red)">${p.potentialLoss?'-$'+parseFloat(p.potentialLoss).toFixed(2):'—'}</div></div>
+      </div>
+      <div class="trade-footer">
+        <div class="trade-meta">
+          📅 ${fdt(p.openTime)} · ⏱ ${fdur(Date.now()-(p.openTime||Date.now()))}
+          ${isPending&&p.expireAt?` · ⏳ Λήγει σε ${Math.max(0,Math.round((p.expireAt-Date.now())/60000))}m`:''}
+        </div>
+        <button class="btn-close-trade" onclick="closeTrade('${p.signalId}','${p.symbol}',${p.currentPrice||p.entryPrice})">
+          ${isPending?'Ακύρωση':'Κλείσιμο'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER HISTORY (από MEXC analytics) ────────────────────────────
+function renderHistory(analytics) {
+  const el=document.getElementById('list-history');
+  if(!analytics||!analytics.trades){el.innerHTML='<div class="empty">Φόρτωση από MEXC...</div>';return;}
+
+  const trades=analytics.trades||[];
+  document.getElementById('hist-count').textContent=trades.length;
+
+  if(!trades.length){el.innerHTML='<div class="empty">Δεν υπάρχουν trades ακόμα</div>';return;}
+
+  const groups={};
+  for(const t of trades){
+    const day=new Date(t.time).toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+    if(!groups[day])groups[day]={trades:[],pnl:0,won:0,lost:0};
+    groups[day].trades.push(t);
+    groups[day].pnl+=t.pnl;
+    if(t.pnl>0)groups[day].won++;else groups[day].lost++;
+  }
+
+  el.innerHTML=Object.entries(groups).map(([date,g])=>`
+    <div>
+      <div class="day-header">
+        <div class="day-date">📅 ${date} <span style="color:var(--sub);font-size:11px">(${g.trades.length})</span></div>
+        <div class="day-right">
+          <div class="day-wl">
+            <span style="color:var(--green)">✅ ${g.won}</span>
+            <span style="color:var(--red)">❌ ${g.lost}</span>
+          </div>
+          <div class="day-pnl" style="color:${g.pnl>=0?'var(--green)':'var(--red)'}">${fpnl(g.pnl)}</div>
+        </div>
+      </div>
+      ${g.trades.map(t=>`
+        <div class="hist-row">
+          <span class="tag">${t.symbol.replace('USDT','')}</span>
+          <div>
+            <div class="hist-sym">${t.symbol}</div>
+            <div class="hist-meta">${fdt(t.time)} · ID: ${t.tradeId||'—'}</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:${t.pnl>=0?'var(--green)':'var(--red)'};text-align:right">${fpnl(t.pnl)}</div>
+          <div style="font-size:16px">${t.pnl>0?'✅':t.pnl<0?'❌':'—'}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ── REFRESH ───────────────────────────────────────────────────────────
+let cachedAnalytics = null;
+
+async function refresh() {
+  try {
+    const [sRes,pRes,aRes]=await Promise.all([
+      fetch(API+'/status'),
+      fetch(API+'/pnl'),
+      fetch(API+'/account'),
+    ]);
+    const status=await sRes.json();
+    const pnl   =await pRes.json();
+    const acct  =await aRes.json();
+
+    // Badges
+    const running=status.isRunning;
+    document.getElementById('run-pill').className='pill '+(running?'p-green':'p-red');
+    document.getElementById('run-txt').textContent=running?'Τρέχει':'Σταματημένο';
+    const demo=status.mode==='testnet';
+    document.getElementById('mode-pill').className='pill '+(demo?'p-blue':'p-amber');
+    document.getElementById('mode-txt').textContent=demo?'Demo Mode':'● Live';
+
+    // Balance
+    const total=acct.totalBalance||acct.usdtBalance||0;
+    document.getElementById('s-balance').textContent='$'+total.toFixed(2);
+
+    // Dashboard stats — από analytics αν διαθέσιμα
+    if(cachedAnalytics){
+      document.getElementById('s-winrate').textContent =(cachedAnalytics.winRate||0)+'%';
+      document.getElementById('s-drawdown').textContent=(cachedAnalytics.maxDrawdown||0)+'%';
+      const pnlEl=document.getElementById('s-pnl');
+      pnlEl.textContent=fpnl(cachedAnalytics.totalPnl);
+      pnlEl.className='stat-val '+(cachedAnalytics.totalPnl>=0?'sv-green':'sv-red');
+    }
+
+    allSignals=status.signals?.all||[];
+    renderSignals(allSignals);
+    renderPrices(status.lastPrices);
+    renderOpen(Array.isArray(pnl)?pnl:[]);
+
+    if(status.activePairs?.length){activePairs=status.activePairs;renderPairs();renderPopular();}
+
+    const ls=status.lastScanTime?new Date(status.lastScanTime).toLocaleTimeString('el-GR'):'—';
+    document.getElementById('footer').textContent=`ICT Bot · Scan: ${ls} · Ανανέωση 15s`;
+
+  } catch(e) {
+    document.getElementById('run-pill').className='pill p-red';
+    document.getElementById('run-txt').textContent='Αποσυνδεδεμένο';
+  }
+}
+
+function renderPrices(prices) {
+  if(!prices)return;
+  document.getElementById('prices').innerHTML=activePairs.slice(0,10).map(p=>`
+    <div class="price-chip">
+      <div class="price-sym">${p.replace('USDT','')}</div>
+      <div class="price-val">${prices[p]?fp(prices[p],p):'—'}</div>
+    </div>`).join('');
+}
+
+function toast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className=`toast ${type} show`;
+  setTimeout(()=>el.className='toast',3000);
+}
+
+// ── ANALYTICS με cache ────────────────────────────────────────────────
+async function loadAnalytics() {
+  document.getElementById('a-hist-list').innerHTML='<div class="ana-loading">⏳ Φόρτωση από MEXC...</div>';
+  try {
+    const r=await fetch(API+'/analytics');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    cachedAnalytics=d;
+
+    document.getElementById('a-winrate').textContent=(d.winRate||0)+'%';
+    document.getElementById('a-winrate').className='ana-val '+(d.winRate>=50?'sv-green':'sv-red');
+    document.getElementById('a-pf').textContent=d.profitFactor||'—';
+    document.getElementById('a-dd').textContent=(d.maxDrawdown||0)+'%';
+    document.getElementById('a-total').textContent=d.totalTrades||0;
+    document.getElementById('a-won').textContent=d.won||0;
+    document.getElementById('a-lost').textContent=d.lost||0;
+
+    const pnlEl=document.getElementById('a-pnl');
+    pnlEl.textContent=fpnl(d.totalPnl);
+    pnlEl.className='ana-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+
+    const netEl=document.getElementById('a-net');
+    netEl.textContent=fpnl(d.netPnl);
+    netEl.className='ana-val '+(d.netPnl>=0?'sv-green':'sv-red');
+
+    document.getElementById('a-funding').textContent=fpnl(d.totalFunding);
+    document.getElementById('a-comm').textContent=fpnl(d.totalCommissions);
+    document.getElementById('a-balance').textContent='$'+(d.currentBalance||0).toFixed(2);
+    document.getElementById('a-unrealized').textContent=fpnl(d.unrealizedPnl);
+
+    // Equity Chart
+    if(d.equity&&d.equity.length>1){
+      const labels=d.equity.map(e=>new Date(e.time).toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit'}));
+      const data  =d.equity.map(e=>e.balance);
+      if(equityChart)equityChart.destroy();
+      equityChart=new Chart(document.getElementById('equity-chart').getContext('2d'),{
+        type:'line',
+        data:{labels,datasets:[{label:'Balance',data,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.06)',borderWidth:2,fill:true,tension:0.4,pointRadius:2,pointHoverRadius:5}]},
+        options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}}},scales:{x:{grid:{color:'rgba(37,40,54,.5)'},ticks:{color:'#5c6480',font:{size:10}}},y:{grid:{color:'rgba(37,40,54,.5)'},ticks:{color:'#5c6480',font:{size:10},callback:v=>'$'+v}}}}
+      });
+    }
+
+    // History list
+    renderHistory(d);
+    document.getElementById('a-hist-count').textContent=(d.trades||[]).length;
+
+    // Dashboard stats update
+    const pEl=document.getElementById('s-pnl');
+    pEl.textContent=fpnl(d.totalPnl);
+    pEl.className='stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+    document.getElementById('s-winrate').textContent=(d.winRate||0)+'%';
+    document.getElementById('s-drawdown').textContent=(d.maxDrawdown||0)+'%';
+
+  } catch(e) {
+    document.getElementById('a-hist-list').innerHTML=`<div class="empty">❌ ${e.message}</div>`;
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+renderPopular();
+renderPairs();
+refresh();
+
+// Φόρτωσε analytics στο background για το dashboard
+fetch(API+'/analytics').then(r=>r.json()).then(d=>{
+  cachedAnalytics=d;
+  if(d.winRate!==undefined){
+    document.getElementById('s-winrate').textContent=(d.winRate||0)+'%';
+    document.getElementById('s-drawdown').textContent=(d.maxDrawdown||0)+'%';
+    const pEl=document.getElementById('s-pnl');
+    pEl.textContent=fpnl(d.totalPnl);
+    pEl.className='stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+  }
+  renderHistory(d);
+}).catch(()=>{});
+
+setInterval(refresh,15000);
+setInterval(()=>fetch(API+'/pnl').then(r=>r.json()).then(d=>Array.isArray(d)&&renderOpen(d)).catch(()=>{}),10000);
+// Analytics refresh κάθε 5 λεπτά
+setInterval(()=>fetch(API+'/analytics').then(r=>r.json()).then(d=>{cachedAnalytics=d;}).catch(()=>{}),300000);
+</script>
+</body>
+</html>
