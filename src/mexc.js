@@ -466,12 +466,15 @@ export async function fetchAllSymbols() {
     const res = await fetch(`${BASE_URL}/api/v1/contract/detail`);
     if (!res.ok) throw new Error(`fetchAllSymbols failed: ${res.status}`);
     const d = await res.json();
-    if (!d.success || !d.data) return [];
-    return d.data
-      .filter(c => c.quoteCoin === 'USDT' && c.state === 0)
+    if (!d.success || !Array.isArray(d.data)) return [];
+    const symbols = d.data
+      .filter(c => c.quoteCoin === 'USDT' && !c.isHidden)
       .map(c => fromMexcSymbol(c.symbol))
       .sort();
-  } catch {
+    console.log(`📊 MEXC symbols loaded: ${symbols.length}`);
+    return symbols;
+  } catch (e) {
+    console.error('fetchAllSymbols error:', e.message);
     return [];
   }
 }

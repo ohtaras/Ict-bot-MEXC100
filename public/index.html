@@ -894,12 +894,18 @@ async function refresh() {
     const acct  =await aRes.json();
 
     // Badges
-    const running=status.isRunning;
-    document.getElementById('run-pill').className='pill '+(running?'p-green':'p-red');
-    document.getElementById('run-txt').textContent=running?'Τρέχει':'Σταματημένο';
-    const demo=status.mode==='testnet';
-    document.getElementById('mode-pill').className='pill '+(demo?'p-blue':'p-amber');
-    document.getElementById('mode-txt').textContent=demo?'Demo Mode':'● Live';
+    const running = status.isRunning;
+    document.getElementById('run-pill').className = 'pill '+(running?'p-green':'p-red');
+    document.getElementById('run-txt').textContent = running ? 'Τρέχει' : 'Σταματημένο';
+    const mode = status.mode;
+    if (mode === 'local') {
+      document.getElementById('mode-pill').className = 'pill p-blue';
+      document.getElementById('mode-txt').textContent = '📋 Local';
+    } else {
+      const demo = mode === 'testnet';
+      document.getElementById('mode-pill').className = 'pill '+(demo?'p-blue':'p-amber');
+      document.getElementById('mode-txt').textContent = demo ? 'Demo Mode' : '● Live';
+    }
 
     // Balance
     const total=acct.totalBalance||acct.usdtBalance||0;
@@ -919,10 +925,10 @@ async function refresh() {
     renderPrices(status.lastPrices);
     renderOpen(Array.isArray(pnl)?pnl:[]);
 
-    if(status.activePairs?.length){activePairs=status.activePairs;renderPairs();renderPopular();}
+    if (status.activePairs?.length) { activePairs = status.activePairs; renderPairs(); }
 
-    const ls=status.lastScanTime?new Date(status.lastScanTime).toLocaleTimeString('el-GR'):'—';
-    document.getElementById('footer').textContent=`ICT Bot · Scan: ${ls} · Ανανέωση 15s`;
+    const ls = status.lastScanTime ? new Date(status.lastScanTime).toLocaleTimeString('el-GR') : '—';
+    document.getElementById('footer').textContent = `8R@5 Bot · Scan: ${ls} · Ανανέωση 15s`;
 
   } catch(e) {
     document.getElementById('run-pill').className='pill p-red';
@@ -1070,8 +1076,6 @@ async function loadAnalytics() {
   }
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────
-renderPopular();
 // ── SIGNAL GROUP COLLAPSE ─────────────────────────────────────────────
 function toggleSigGroup(hd) {
   const body = hd.nextElementSibling;

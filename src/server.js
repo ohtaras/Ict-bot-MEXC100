@@ -200,31 +200,49 @@ app.get('/pnl', async (req, res) => {
   try {
     const orders = getActiveOrders();
 
-    // Local orders (simulation)
+    const { lastPrices } = getBotStatus();
+
+    // Local orders (simulation) — live PnL estimated from lastPrices
     const localPositions = orders
       .filter(o => o.status === 'open_local')
-      .map(o => ({
-        signalId:        o.signalId,
-        symbol:          o.symbol,
-        side:            o.side,
-        entryPrice:      o.entryPrice,
-        currentPrice:    null,
-        quantity:        o.quantity,
-        pnl:             null,
-        pnlPct:          null,
-        sl:              o.sl,
-        tp:              o.tp,
-        rr:              2.5,
-        openTime:        o.openTime,
-        leverage:        o.leverage,
-        status:          'open_local',
-        isLocal:         true,
-        sentToMEXC:      false,
-        riskAmount:      o.riskAmount,
-        potentialProfit: o.potentialProfit,
-        potentialLoss:   o.potentialLoss,
-        positionSize:    o.positionSize,
-      }));
+      .map(o => {
+        const curPrice = lastPrices[o.symbol] || null;
+        let pnlVal = null, pnlPct = null;
+        if (curPrice && o.sl && o.potentialLoss) {
+          // Scale PnL proportionally between SL and TP
+          const slDist = Math.abs(o.entryPrice - o.sl);
+          if (slDist > 0) {
+            const move = o.side === 'BUY'
+              ? curPrice - o.entryPrice
+              : o.entryPrice - curPrice;
+            pnlVal = parseFloat(((move / slDist) * o.potentialLoss).toFixed(2));
+            const tpDist = Math.abs(o.tp - o.entryPrice);
+            pnlPct = tpDist > 0 ? parseFloat(((move / tpDist) * 250).toFixed(1)) : 0;
+          }
+        }
+        return {
+          signalId:        o.signalId,
+          symbol:          o.symbol,
+          side:            o.side,
+          entryPrice:      o.entryPrice,
+          currentPrice:    curPrice,
+          quantity:        o.quantity,
+          pnl:             pnlVal,
+          pnlPct:          pnlPct,
+          sl:              o.sl,
+          tp:              o.tp,
+          rr:              2.5,
+          openTime:        o.openTime,
+          leverage:        o.leverage,
+          status:          'open_local',
+          isLocal:         true,
+          sentToMEXC:      false,
+          riskAmount:      o.riskAmount,
+          potentialProfit: o.potentialProfit,
+          potentialLoss:   o.potentialLoss,
+          positionSize:    o.positionSize,
+        };
+      });
 
     // Pending fill (real MEXC)
     const pendingFills = orders

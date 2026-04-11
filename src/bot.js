@@ -45,6 +45,18 @@ async function scanPair(symbol) {
     const candles = await fetchCandles(symbol, '1h', 200);
     if (candles.length < 30) return [];
     const signals = ictCoreEngine(candles, symbol);
+
+    // Pre-calculate simulation sizing so UI shows data immediately (before trigger)
+    const simBalance  = parseFloat(process.env.SIM_BALANCE  || '10000');
+    const riskPercent = parseFloat(process.env.RISK_PERCENT || '1.5');
+    const riskAmount  = parseFloat((simBalance * riskPercent / 100).toFixed(2));
+    for (const s of signals) {
+      s.riskAmount      = riskAmount;
+      s.positionSize    = parseFloat((riskAmount * 10).toFixed(2)); // 10x leverage preview
+      s.potentialProfit = parseFloat((riskAmount * 2.5).toFixed(2));
+      s.potentialLoss   = riskAmount;
+    }
+
     if (signals.length > 0) log(`🔍 ${symbol}: ${signals.length} signal(s)`);
     return signals;
   } catch (err) {
