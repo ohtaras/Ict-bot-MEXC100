@@ -337,7 +337,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     </div>
     <div class="card" id="card-history">
       <div class="card-head" onclick="toggleCard('history')">
-        <span class="card-title">📊 Trade History (από MEXC)</span>
+        <span class="card-title">📊 Trade History (Simulation)</span>
         <div class="card-right">
           <span class="card-count" id="hist-count">0</span>
           <span class="chev">▼</span>
@@ -704,6 +704,7 @@ async function closeTrade(signalId,symbol,currentPrice) {
     const d=await r.json();
     toast(d.success?`${symbol} κλείστηκε`:d.error,d.success?'ok':'err');
     await refresh();
+    fetchLocalAnalytics();  // ανανέωσε αμέσως trade history
   } catch(e){toast(e.message,'err');}
 }
 
@@ -1088,22 +1089,26 @@ renderPairs();
 loadSymbols();
 refresh();
 
-// Φόρτωσε local analytics στο background για dashboard stats
-fetch(API+'/analytics/local').then(r=>r.json()).then(d=>{
-  cachedAnalytics = d;
-  if (d.winRate !== undefined) {
-    document.getElementById('s-winrate').textContent  = (d.winRate||0)+'%';
-    document.getElementById('s-drawdown').textContent = (d.maxDrawdown||0)+'%';
-    const pEl = document.getElementById('s-pnl');
-    pEl.textContent = fpnl(d.totalPnl);
-    pEl.className = 'stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
-  }
-}).catch(()=>{});
+// Φόρτωσε local analytics στο background για dashboard stats + trade history
+function fetchLocalAnalytics() {
+  return fetch(API+'/analytics/local').then(r=>r.json()).then(d=>{
+    cachedAnalytics = d;
+    if (d.winRate !== undefined) {
+      document.getElementById('s-winrate').textContent  = (d.winRate||0)+'%';
+      document.getElementById('s-drawdown').textContent = (d.maxDrawdown||0)+'%';
+      const pEl = document.getElementById('s-pnl');
+      pEl.textContent = fpnl(d.totalPnl);
+      pEl.className = 'stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+    }
+    renderHistory(d);  // ενημέρωσε Trade History tab
+  }).catch(()=>{});
+}
+fetchLocalAnalytics();
 
 setInterval(refresh, 15000);
 setInterval(() => fetch(API+'/pnl').then(r=>r.json()).then(d=>Array.isArray(d)&&renderOpen(d)).catch(()=>{}), 10000);
-// Symbols refresh κάθε 10 λεπτά
-setInterval(loadSymbols, 600000);
+setInterval(fetchLocalAnalytics, 30000);   // trade history refresh κάθε 30s
+setInterval(loadSymbols, 600000);          // symbols refresh κάθε 10 λεπτά
 </script>
 </body>
 </html>

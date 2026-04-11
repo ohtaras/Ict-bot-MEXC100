@@ -135,19 +135,42 @@ export function closeLocalOrder(signalId, reason, closePrice) {
   const order = activeOrders.get(signalId);
   if (!order || order.status !== 'open_local') return;
 
-  // Simulated PnL βάσει fixed risk amounts (ακριβές για paper trading)
-  const pnl = reason === 'TP' ? order.potentialProfit
-            : reason === 'SL' ? -order.potentialLoss
-            : 0;
+  let pnl, pnlPct;
+
+  if (reason === 'TP') {
+    pnl    = order.potentialProfit;
+    pnlPct = 250;
+  } else if (reason === 'SL') {
+    pnl    = -order.potentialLoss;
+    pnlPct = -100;
+  } else {
+    // manual_close: υπολογισμός πραγματικού PnL από κίνηση τιμής
+    const cp      = parseFloat(closePrice) || order.entryPrice;
+    const slDist  = Math.abs(order.entryPrice - (order.sl || order.entryPrice));
+    if (slDist > 0 && order.potentialLoss) {
+      const move = order.side === 'BUY'
+        ? cp - order.entryPrice
+        : order.entryPrice - cp;
+      pnl    = parseFloat(((move / slDist) * order.potentialLoss).toFixed(2));
+      const tpDist = Math.abs((order.tp || order.entryPrice) - order.entryPrice);
+      pnlPct = tpDist > 0 ? parseFloat(((move / tpDist) * 250).toFixed(1)) : 0;
+    } else {
+      pnl    = 0;
+      pnlPct = 0;
+    }
+  }
+
+  // Αν η εντολή έκλεισε με κέρδος → 'won', με ζημιά → 'lost', στο μηδέν → 'manual_close'
+  const result = pnl > 0 ? 'won' : pnl < 0 ? 'lost' : 'manual_close';
 
   const closed = {
     ...order,
     closeTime:   Date.now(),
-    closePrice,
+    closePrice:  parseFloat(closePrice) || order.entryPrice,
     closeReason: reason,
-    result:      reason === 'TP' ? 'won' : reason === 'SL' ? 'lost' : 'manual_close',
+    result,
     pnl:         parseFloat(pnl.toFixed(4)),
-    pnlPct:      reason === 'TP' ? 250 : reason === 'SL' ? -100 : 0,
+    pnlPct,
     duration:    Date.now() - order.openTime,
     isLocal:     true,
   };
@@ -159,7 +182,7 @@ export function closeLocalOrder(signalId, reason, closePrice) {
   activeOrders.delete(signalId);
   saveActive();
 
-  console.log(`📋 LOCAL CLOSE ${order.symbol} (${reason}) Sim PnL: $${pnl.toFixed(2)}`);
+  console.log(`📋 LOCAL CLOSE ${order.symbol} (${reason}) PnL: $${pnl.toFixed(2)} [${result}]`);
 }
 
 // ─── SEND TO MEXC ─────────────────────────────────────────────────────
@@ -430,9 +453,10 @@ export function getLocalStats() {
 }
 
 function _calcStats(history) {
-  const closed   = history.filter(t => t.result === 'won' || t.result === 'lost');
-  const won      = closed.filter(t => t.result === 'won');
-  const lost     = closed.filter(t => t.result === 'lost');
+  // Συμπεριλαμβάνουμε όλα τα κλειστά trades (won, lost, manual_close)
+  const closed   = history.filter(t => t.result === 'won' || t.result === 'lost' || t.result === 'manual_close');
+  const won      = closed.filter(t => t.pnl > 0);
+  const lost     = closed.filter(t => t.pnl < 0);
   const totalPnl = closed.reduce((s, t) => s + (t.pnl || 0), 0);
   const winRate  = closed.length > 0 ? (won.length / closed.length) * 100 : 0;
 
