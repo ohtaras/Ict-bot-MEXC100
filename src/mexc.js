@@ -460,3 +460,18 @@ export async function ping() {
     return false;
   }
 }
+
+export async function fetchAllSymbols() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/contract/detail`);
+    if (!res.ok) throw new Error(`fetchAllSymbols failed: ${res.status}`);
+    const d = await res.json();
+    if (!d.success || !d.data) return [];
+    return d.data
+      .filter(c => c.quoteCoin === 'USDT' && c.state === 0)
+      .map(c => fromMexcSymbol(c.symbol))
+      .sort();
+  } catch {
+    return [];
+  }
+}

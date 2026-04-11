@@ -14,6 +14,7 @@ import {
   fetchAccountInfo,
   fetchPositions,
   fetchBinanceAnalytics,
+  fetchAllSymbols,
   ping,
 } from './mexc.js';
 import {
@@ -383,6 +384,23 @@ app.get('/analytics/mexc', async (req, res) => {
     res.json({ ...data, source: 'mexc' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SYMBOLS (all MEXC futures pairs) ────────────────────────────────
+let cachedSymbols = [];
+let symbolsCachedAt = 0;
+app.get('/symbols', async (req, res) => {
+  try {
+    // Cache for 10 minutes
+    if (cachedSymbols.length && Date.now() - symbolsCachedAt < 600_000) {
+      return res.json({ symbols: cachedSymbols, count: cachedSymbols.length, cached: true });
+    }
+    const symbols = await fetchAllSymbols();
+    if (symbols.length) { cachedSymbols = symbols; symbolsCachedAt = Date.now(); }
+    res.json({ symbols: symbols.length ? symbols : cachedSymbols, count: symbols.length || cachedSymbols.length });
+  } catch (err) {
+    res.json({ symbols: cachedSymbols, count: cachedSymbols.length, error: err.message });
   }
 });
 

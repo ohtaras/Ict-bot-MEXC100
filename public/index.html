@@ -177,6 +177,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .mbtn-gray{background:transparent;border-color:var(--line);color:var(--sub)}
 .mbtn-gray:hover{color:var(--text)}
 .footer{margin-top:20px;text-align:center;font-size:11px;color:var(--sub)}
+/* PAIRS SCROLL LIST */
+.pairs-list-hd{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px}
+.pairs-scroll-list{max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.pair-row{padding:8px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--line);transition:background .12s;font-size:12px;font-weight:500;font-family:var(--mono)}
+.pair-row:last-child{border-bottom:none}
+.pair-row:hover{background:var(--hover-item)}
+.pair-row.selected{background:rgba(59,130,246,.08);color:var(--blue)}
+.pair-row.popular-row .pair-star{color:var(--amber);font-size:10px;margin-right:4px}
+.pair-row.selected .pair-icon{color:var(--green)}
+.pair-row:not(.selected) .pair-icon{color:var(--sub);font-size:11px}
+.pairs-loading{padding:30px;text-align:center;color:var(--sub);font-size:12px}
+/* SIGNAL GROUPS COLLAPSIBLE */
+.sig-group{border-bottom:1px solid var(--line)}
+.sig-group:last-child{border-bottom:none}
+.sig-day-hd{padding:8px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;background:var(--card2);font-size:10px;font-weight:700;color:var(--sub);letter-spacing:.5px;text-transform:uppercase;transition:background .12s}
+.sig-day-hd:hover{background:var(--hover-item)}
+.sig-chev{font-size:10px;transition:transform .2s;color:var(--sub)}
+.sig-chev.closed{transform:rotate(-90deg)}
+.sig-day-body.hidden{display:none}
 /* THEME TOGGLE */
 .btn-theme{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--sub);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
 .btn-theme:hover{border-color:var(--amber);color:var(--amber)}
@@ -262,15 +281,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         <span class="card-title">📊 Παρακολούθηση Pairs</span>
         <span class="chev">▼</span>
       </div>
-      <div class="card-body" id="body-pairs" style="max-height:600px">
+      <div class="card-body" id="body-pairs" style="max-height:700px">
         <div class="pairs-active" id="pairs-active"></div>
         <div class="pairs-ctrl">
-          <div class="pop-label">Δημοφιλή</div>
-          <div class="pop-chips" id="pop-chips"></div>
-          <div class="search-wrap">
-            <input class="search-input" id="search" placeholder="Αναζήτηση pair... BNB, AVAX, LINK"
-              oninput="onSearch(this.value)" onblur="setTimeout(closeSearch,180)">
-            <div class="search-drop" id="search-drop"></div>
+          <div class="search-wrap" style="margin-bottom:0">
+            <input class="search-input" id="pairs-search" placeholder="🔍 Αναζήτηση pair... BTC, SOL, INJ"
+              oninput="filterPairsList(this.value)">
+          </div>
+          <div class="pairs-list-hd">
+            <span id="pairs-list-label">Pairs MEXC Futures</span>
+            <span id="pairs-count" style="color:var(--sub);font-family:var(--mono)">⏳</span>
+          </div>
+          <div class="pairs-scroll-list" id="pairs-scroll-list">
+            <div class="pairs-loading">⏳ Φόρτωση pairs από MEXC...</div>
           </div>
         </div>
       </div>
@@ -443,10 +466,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 <script>
 const API = '';
-const POPULAR = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT','NEARUSDT','ARBUSDT','OPUSDT','INJUSDT','SUIUSDT','APTUSDT','ATOMUSDT','LTCUSDT','UNIUSDT','FILUSDT'];
-const ALL_PAIRS = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT','LTCUSDT','UNIUSDT','ATOMUSDT','ETCUSDT','XLMUSDT','BCHUSDT','FILUSDT','APTUSDT','ARBUSDT','OPUSDT','INJUSDT','SUIUSDT','FETUSDT','NEARUSDT','ALGOUSDT','VETUSDT','ICPUSDT','SANDUSDT','MANAUSDT','AAVEUSDT','MKRUSDT','CRVUSDT','LDOUSDT','STXUSDT','RUNEUSDT','EGLDUSDT','KSMUSDT','ZECUSDT','WLDUSDT','PENDLEUSDT','JUPUSDT','ORDIUSDT','GMXUSDT','DYDXUSDT','IMXUSDT','GALAUSDT','ENSUSDT','WOOUSDT','1000PEPEUSDT','1000SHIBUSDT','1000BONKUSDT','SEIUSDT','TIAUSDT','PYTHUSDT'];
+// Top 20 πιο εμπορεύσιμα MEXC Futures (default)
+const POPULAR = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT','ARBUSDT','OPUSDT','INJUSDT','SUIUSDT','NEARUSDT','APTUSDT','ATOMUSDT','LTCUSDT','UNIUSDT','FILUSDT'];
 
-let activePairs = ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','LINKUSDT','DOTUSDT'];
+let activePairs = [...POPULAR];
+let allPairs    = [...POPULAR]; // θα φορτωθεί από API
+let pairsFilter = '';
 let allSignals  = [];
 let sigFilter   = 'pending';
 let equityChart = null;
@@ -597,48 +622,67 @@ async function sendToMEXC(signalId) {
 
 // ── PAIRS ─────────────────────────────────────────────────────────────
 function renderPairs() {
-  document.getElementById('pairs-active').innerHTML=
-    activePairs.map(p=>`<div class="p-chip"><span>${p.replace('USDT','/USDT')}</span><span class="p-chip-x" onclick="removePair('${p}')">×</span></div>`).join('')||
+  document.getElementById('pairs-active').innerHTML =
+    activePairs.map(p => `<div class="p-chip"><span>${p.replace('USDT','/USDT')}</span><span class="p-chip-x" onclick="removePair('${p}')">×</span></div>`).join('') ||
     '<span style="color:var(--sub);font-size:12px">Δεν υπάρχουν pairs</span>';
-  document.querySelectorAll('.pop-btn').forEach(b=>b.classList.toggle('on',activePairs.includes(b.dataset.p)));
+  renderPairsList();
 }
 
-function renderPopular() {
-  document.getElementById('pop-chips').innerHTML=POPULAR.map(p=>`
-    <button class="pop-btn ${activePairs.includes(p)?'on':''}" data-p="${p}" onclick="togglePair('${p}')">${p.replace('USDT','')}</button>`).join('');
+function renderPairsList() {
+  const q = pairsFilter.toUpperCase().replace(/[\/\-\s]/g, '');
+  const filtered = q
+    ? allPairs.filter(p => p.includes(q))
+    : allPairs;
+  const el = document.getElementById('pairs-scroll-list');
+  const countEl = document.getElementById('pairs-count');
+  const labelEl = document.getElementById('pairs-list-label');
+  if (countEl) countEl.textContent = filtered.length + ' pairs';
+  if (labelEl) labelEl.textContent = q ? `Αποτελέσματα για "${q}"` : 'Pairs MEXC Futures';
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="pairs-loading">Δεν βρέθηκαν pairs</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(p => {
+    const sel  = activePairs.includes(p);
+    const pop  = POPULAR.includes(p);
+    const name = p.replace('USDT', '');
+    return `<div class="pair-row ${sel ? 'selected' : ''} ${pop ? 'popular-row' : ''}" onclick="togglePair('${p}')">
+      <span>${pop ? '<span class="pair-star">★</span>' : ''}<span class="pair-name">${name}</span><span style="color:var(--sub);font-size:10px;margin-left:4px">/USDT</span></span>
+      <span class="pair-icon">${sel ? '✓' : '+'}</span>
+    </div>`;
+  }).join('');
+}
+
+function filterPairsList(q) {
+  pairsFilter = q;
+  renderPairsList();
+}
+
+async function loadSymbols() {
+  try {
+    const r = await fetch(API + '/symbols');
+    const d = await r.json();
+    if (d.symbols && d.symbols.length > 0) {
+      allPairs = d.symbols;
+      renderPairsList();
+    }
+  } catch {}
 }
 
 function togglePair(sym) {
-  activePairs.includes(sym)?(activePairs=activePairs.filter(x=>x!==sym)):activePairs.push(sym);
-  renderPairs(); syncPairs();
+  activePairs.includes(sym)
+    ? (activePairs = activePairs.filter(x => x !== sym))
+    : activePairs.push(sym);
+  renderPairs();
+  syncPairs();
 }
 
 function removePair(p) {
-  activePairs=activePairs.filter(x=>x!==p); renderPairs(); renderPopular(); syncPairs();
+  activePairs = activePairs.filter(x => x !== p);
+  renderPairs();
+  syncPairs();
 }
-
-function onSearch(q) {
-  const drop=document.getElementById('search-drop');
-  if(!q.trim()){drop.classList.remove('open');return;}
-  const qc=q.toUpperCase().replace(/[\/\-]/g,'');
-  const res=ALL_PAIRS.filter(p=>p.includes(qc)).slice(0,12);
-  if(!res.length){drop.classList.remove('open');return;}
-  drop.innerHTML=res.map(p=>{
-    const on=activePairs.includes(p);
-    return`<div class="search-item ${on?'taken':''}" ${!on?`onclick="addPair('${p}')"`:''}">
-      <span style="font-weight:500">${p.replace('USDT','/USDT')}</span>
-      ${on?'<span style="color:var(--green);font-size:10px">✓</span>':'<span style="color:var(--sub);font-size:10px">+</span>'}
-    </div>`;
-  }).join('');
-  drop.classList.add('open');
-}
-
-function addPair(sym) {
-  if(!activePairs.includes(sym)){activePairs.push(sym);renderPairs();renderPopular();syncPairs();toast('+'+sym,'ok');}
-  document.getElementById('search').value=''; closeSearch();
-}
-
-function closeSearch(){document.getElementById('search-drop').classList.remove('open');}
 
 async function syncPairs() {
   try{await fetch(API+'/pairs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:activePairs})});}catch{}
@@ -694,42 +738,45 @@ function renderSignals(signals) {
     groups[key].push(s);
   }
 
-  el.innerHTML=Object.entries(groups).map(([date,sigs])=>`
-    <div>
-      <div style="padding:7px 18px;background:var(--card2);border-bottom:1px solid var(--line);font-size:10px;color:var(--sub);font-weight:600;letter-spacing:.5px">
-        📅 ${date} · ${sigs.length} signals
+  el.innerHTML = Object.entries(groups).map(([date, sigs]) => `
+    <div class="sig-group">
+      <div class="sig-day-hd" onclick="toggleSigGroup(this)">
+        <span>📅 ${date} <span style="color:var(--sub);font-size:10px;font-weight:400">· ${sigs.length} signals</span></span>
+        <span class="sig-chev">▼</span>
       </div>
-      ${sigs.map(s=>{
-        const bull=s.type==='BULLISH';
-        const stMap={pending:'⏳ Pending',triggered:'✅ Triggered',expired:'⏰ Expired',rejected:'🚫 Rejected'};
-        const scMap={pending:'st-pending',triggered:'st-triggered',expired:'st-expired',rejected:'st-rejected'};
-        const expLeft=s.expireAt&&s.status==='pending'?Math.max(0,Math.round((s.expireAt-Date.now())/60000)):null;
-        return`<div class="row">
-          <div class="row-top">
-            <div class="row-left">
-              <span class="row-symbol">${s.pair}</span>
-              <span class="tag ${bull?'tag-bull':'tag-bear'}">${bull?'BULL':'BEAR'}</span>
-              <span class="tag-rr">R:R 2.5</span>
+      <div class="sig-day-body">
+        ${sigs.map(s => {
+          const bull = s.type === 'BULLISH';
+          const stMap = {pending:'⏳ Pending',triggered:'✅ Triggered',expired:'⏰ Expired',rejected:'🚫 Rejected'};
+          const scMap = {pending:'st-pending',triggered:'st-triggered',expired:'st-expired',rejected:'st-rejected'};
+          const expLeft = s.expireAt && s.status==='pending' ? Math.max(0,Math.round((s.expireAt-Date.now())/60000)) : null;
+          return `<div class="row">
+            <div class="row-top">
+              <div class="row-left">
+                <span class="row-symbol">${s.pair}</span>
+                <span class="tag ${bull?'tag-bull':'tag-bear'}">${bull?'BULL':'BEAR'}</span>
+                <span class="tag-rr">R:R 2.5</span>
+              </div>
+              <div class="${scMap[s.status]||'st-expired'}">${stMap[s.status]||s.status}</div>
             </div>
-            <div class="${scMap[s.status]||'st-expired'}">${stMap[s.status]||s.status}</div>
-          </div>
-          <div class="row-meta">
-            Entry: <strong style="color:var(--amber)">${fp(s.entry,s.pair)}</strong>
-            &nbsp;·&nbsp; SL: <span style="color:var(--red)">${fp(s.sl,s.pair)}</span>
-            &nbsp;·&nbsp; TP: <span style="color:var(--green)">${fp(s.tp,s.pair)}</span>
-          </div>
-          <div class="risk-box">
-            <div class="risk-item">Position Size<div class="risk-val">${s.positionSize?'$'+parseFloat(s.positionSize).toFixed(2):'—'}</div></div>
-            <div class="risk-item">Target Profit<div class="risk-val" style="color:var(--green)">${s.potentialProfit?'+$'+parseFloat(s.potentialProfit).toFixed(2):'—'}</div></div>
-            <div class="risk-item">Max Loss<div class="risk-val" style="color:var(--red)">${s.potentialLoss?'-$'+parseFloat(s.potentialLoss).toFixed(2):'—'}</div></div>
-          </div>
-          <div style="font-size:10px;color:var(--sub);font-family:var(--mono)">
-            🕐 ${fdt(s.detectedAt||s.timestamp)}
-            ${expLeft!==null?` · ⏳ Λήγει σε ${expLeft}m`:''}
-            ${s.rejectReason?` · 🚫 ${s.rejectReason}`:''}
-          </div>
-        </div>`;
-      }).join('')}
+            <div class="row-meta">
+              Entry: <strong style="color:var(--amber)">${fp(s.entry,s.pair)}</strong>
+              &nbsp;·&nbsp; SL: <span style="color:var(--red)">${fp(s.sl,s.pair)}</span>
+              &nbsp;·&nbsp; TP: <span style="color:var(--green)">${fp(s.tp,s.pair)}</span>
+            </div>
+            <div class="risk-box">
+              <div class="risk-item">Position Size<div class="risk-val">${s.positionSize?'$'+parseFloat(s.positionSize).toFixed(2):'—'}</div></div>
+              <div class="risk-item">Target Profit<div class="risk-val" style="color:var(--green)">${s.potentialProfit?'+$'+parseFloat(s.potentialProfit).toFixed(2):'—'}</div></div>
+              <div class="risk-item">Max Loss<div class="risk-val" style="color:var(--red)">${s.potentialLoss?'-$'+parseFloat(s.potentialLoss).toFixed(2):'—'}</div></div>
+            </div>
+            <div style="font-size:10px;color:var(--sub);font-family:var(--mono)">
+              🕐 ${fdt(s.detectedAt||s.timestamp)}
+              ${expLeft!==null?` · ⏳ Λήγει σε ${expLeft}m`:''}
+              ${s.rejectReason?` · 🚫 ${s.rejectReason}`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
     </div>`).join('');
 }
 
@@ -1025,26 +1072,34 @@ async function loadAnalytics() {
 
 // ── INIT ──────────────────────────────────────────────────────────────
 renderPopular();
+// ── SIGNAL GROUP COLLAPSE ─────────────────────────────────────────────
+function toggleSigGroup(hd) {
+  const body = hd.nextElementSibling;
+  const chev = hd.querySelector('.sig-chev');
+  body.classList.toggle('hidden');
+  chev.classList.toggle('closed');
+}
+
 renderPairs();
+loadSymbols();
 refresh();
 
-// Φόρτωσε analytics στο background για το dashboard
-fetch(API+'/analytics').then(r=>r.json()).then(d=>{
-  cachedAnalytics=d;
-  if(d.winRate!==undefined){
-    document.getElementById('s-winrate').textContent=(d.winRate||0)+'%';
-    document.getElementById('s-drawdown').textContent=(d.maxDrawdown||0)+'%';
-    const pEl=document.getElementById('s-pnl');
-    pEl.textContent=fpnl(d.totalPnl);
-    pEl.className='stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
+// Φόρτωσε local analytics στο background για dashboard stats
+fetch(API+'/analytics/local').then(r=>r.json()).then(d=>{
+  cachedAnalytics = d;
+  if (d.winRate !== undefined) {
+    document.getElementById('s-winrate').textContent  = (d.winRate||0)+'%';
+    document.getElementById('s-drawdown').textContent = (d.maxDrawdown||0)+'%';
+    const pEl = document.getElementById('s-pnl');
+    pEl.textContent = fpnl(d.totalPnl);
+    pEl.className = 'stat-val '+(d.totalPnl>=0?'sv-green':'sv-red');
   }
-  renderHistory(d);
 }).catch(()=>{});
 
-setInterval(refresh,15000);
-setInterval(()=>fetch(API+'/pnl').then(r=>r.json()).then(d=>Array.isArray(d)&&renderOpen(d)).catch(()=>{}),10000);
-// Analytics refresh κάθε 5 λεπτά
-setInterval(()=>fetch(API+'/analytics').then(r=>r.json()).then(d=>{cachedAnalytics=d;}).catch(()=>{}),300000);
+setInterval(refresh, 15000);
+setInterval(() => fetch(API+'/pnl').then(r=>r.json()).then(d=>Array.isArray(d)&&renderOpen(d)).catch(()=>{}), 10000);
+// Symbols refresh κάθε 10 λεπτά
+setInterval(loadSymbols, 600000);
 </script>
 </body>
 </html>
