@@ -29,15 +29,18 @@ let executedKeys = new Set();
 let lastScanTime = null;
 let lastPrices   = {};
 
-const SCAN_INTERVAL  = parseInt(process.env.SCAN_INTERVAL_MS  || '60000');
+const SCAN_INTERVAL  = parseInt(process.env.SCAN_INTERVAL_MS  || '120000'); // 2 λεπτά για 1000+ pairs
 const PRICE_INTERVAL = parseInt(process.env.PRICE_INTERVAL_MS || '15000');
 const SLTP_INTERVAL  = 5000;
 const FILL_INTERVAL  = 15000;
 const SYNC_INTERVAL  = 30000;
+const SCAN_DELAY_MS  = 80; // 80ms μεταξύ κάθε pair = ~12 req/sec (MEXC limit: 20/sec)
 
 function log(msg) {
   console.log(`[${new Date().toLocaleTimeString('el-GR')}] ${msg}`);
 }
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ─── SCAN ─────────────────────────────────────────────────────────────
 
@@ -70,10 +73,16 @@ async function scanPair(symbol) {
 async function runScan() {
   if (!isRunning) return;
   lastScanTime = new Date();
-  log(`\n═══ ICT Scan (${activePairs.length} pairs) ═══`);
+  log(`\n═══ ICT Scan (${activePairs.length} pairs) — delay ${SCAN_DELAY_MS}ms/pair ═══`);
 
+  let scanned = 0, errors = 0;
   for (const symbol of activePairs) {
+    if (!isRunning) break; // αν σταματήσει ο bot κατά τη διάρκεια του scan
+
     const signals = await scanPair(symbol);
+    scanned++;
+    if (signals.length === 0 && symbol.includes('error')) errors++;
+
     for (const sig of signals) {
       const key = `${sig.pair}-${sig.entry}-${sig.timestamp}`;
       if (!executedKeys.has(key)) {
@@ -81,6 +90,8 @@ async function runScan() {
         executedKeys.add(key);
       }
     }
+
+    await sleep(SCAN_DELAY_MS); // rate limit protection
   }
 
   if (allSignals.length > 500) allSignals = allSignals.slice(0, 500);
@@ -88,7 +99,7 @@ async function runScan() {
   const pending   = allSignals.filter(s => s.status === 'pending').length;
   const triggered = allSignals.filter(s => s.status === 'triggered').length;
   const expired   = allSignals.filter(s => s.status === 'expired').length;
-  log(`📋 Signals — Pending: ${pending} | Triggered: ${triggered} | Expired: ${expired}`);
+  log(`📋 Scan ολοκληρώθηκε (${scanned} pairs) | Pending: ${pending} | Triggered: ${triggered} | Expired: ${expired}`);
 }
 
 // ─── PRICE CHECK + TRIGGER ─────────────────────────────────────────────
