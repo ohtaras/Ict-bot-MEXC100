@@ -918,14 +918,16 @@ let cachedAnalytics = null;
 
 async function refresh() {
   try {
-    const [sRes,pRes,aRes]=await Promise.all([
+    const [sRes,pRes,aRes,stRes]=await Promise.all([
       fetch(API+'/status'),
       fetch(API+'/pnl'),
       fetch(API+'/account'),
+      fetch(API+'/stats'),
     ]);
     const status=await sRes.json();
     const pnl   =await pRes.json();
     const acct  =await aRes.json();
+    const stats =await stRes.json();
 
     // Badges
     const running = status.isRunning;
@@ -941,17 +943,34 @@ async function refresh() {
       document.getElementById('mode-txt').textContent = demo ? 'Demo Mode' : '● Live';
     }
 
-    // Balance
-    const total=acct.totalBalance||acct.usdtBalance||0;
-    document.getElementById('s-balance').textContent='$'+total.toFixed(2);
+    // Balance — simulation αν είμαστε σε local mode, real αν υπάρχουν keys
+    const simAvail   = stats.simAvailableBalance  || 0;
+    const simInitial = stats.simInitialBalance     || 100;
+    const realTotal  = acct.totalBalance || acct.usdtBalance || 0;
+    const isLocal    = acct.noKeys || mode === 'local';
+    const displayBal = isLocal ? simAvail : realTotal;
+    const balEl      = document.getElementById('s-balance');
+    balEl.textContent = '$' + displayBal.toFixed(2);
+    // Χρωματισμός: πράσινο αν πάνω από initial, κόκκινο αν κάτω
+    if (isLocal) {
+      balEl.className = 'stat-val ' + (simAvail >= simInitial ? 'sv-green' : simAvail < simInitial * 0.5 ? 'sv-red' : 'sv-amber');
+    }
+    // Label: δείχνει και το initial για σύγκριση
+    const balLabel = document.querySelector('#s-balance').closest('.stat').querySelector('.stat-label');
+    if (balLabel && isLocal) balLabel.textContent = `Sim Balance / $${simInitial}`;
 
-    // Dashboard stats — από analytics αν διαθέσιμα
+    // Dashboard stats — από local stats (πάντα διαθέσιμα)
+    const loc = stats.local || {};
+    const simPnl = parseFloat((simAvail - simInitial).toFixed(2));
+    document.getElementById('s-winrate').textContent  = (loc.winRate||0)+'%';
+    document.getElementById('s-drawdown').textContent = (loc.maxDrawdown||0)+'%';
+    const pnlEl = document.getElementById('s-pnl');
+    pnlEl.textContent = fpnl(simPnl);
+    pnlEl.className   = 'stat-val '+(simPnl>=0?'sv-green':'sv-red');
+    // Αν υπάρχουν analytics cache, χρησιμοποίησέ τα για winrate/drawdown
     if(cachedAnalytics){
-      document.getElementById('s-winrate').textContent =(cachedAnalytics.winRate||0)+'%';
-      document.getElementById('s-drawdown').textContent=(cachedAnalytics.maxDrawdown||0)+'%';
-      const pnlEl=document.getElementById('s-pnl');
-      pnlEl.textContent=fpnl(cachedAnalytics.totalPnl);
-      pnlEl.className='stat-val '+(cachedAnalytics.totalPnl>=0?'sv-green':'sv-red');
+      document.getElementById('s-winrate').textContent  = (cachedAnalytics.winRate||loc.winRate||0)+'%';
+      document.getElementById('s-drawdown').textContent = (cachedAnalytics.maxDrawdown||loc.maxDrawdown||0)+'%';
     }
 
     allSignals=status.signals?.all||[];
