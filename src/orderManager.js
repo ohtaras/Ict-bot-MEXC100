@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 const LEVERAGE          = 10;
 const MAKER_FEE         = 0.0002;   // 0.02% — MEXC Futures limit order fee
 const TAKER_FEE         = 0.0006;   // 0.06% — MEXC Futures market order fee
+const MAX_MARGIN_PCT    = 0.15;     // Max 15% of available balance σε margin ανά θέση (position size limiter)
 const STORAGE           = '/tmp/active_orders_mexc.json';
 const HISTORY_FILE      = '/tmp/trade_history_mexc.json';
 const LOCAL_HISTORY_FILE = '/tmp/local_history_mexc.json';
@@ -101,38 +102,48 @@ export async function executeSignalLocal(signal) {
   const riskPercent      = getRisk();
   const availableBalance = getAvailableSimBalance();
   const contractSize     = 0.001;
+  const maxMargin        = availableBalance * MAX_MARGIN_PCT;  // 15% του available
 
-  // ── Υπολογισμός qty βάσει ΔΙΑΘΕΣΙΜΟΥ κεφαλαίου ─────────────────────
+  // ── ΒΗΜΑ 1: Υπολογισμός qty βάσει risk (2.5% × available) ───────────
   let qty = 1;
   try {
     qty = calculatePositionSize(availableBalance, riskPercent, entry, sl, contractSize, LEVERAGE);
   } catch {}
 
-  // ── MEXC Isolated Margin = notional / leverage ───────────────────────
+  // ── ΒΗΜΑ 2: Position Size Limiter — ακριβώς όπως η MEXC ─────────────
+  // Αν το margin ξεπερνά το 15% του balance → μειώνουμε τα contracts
+  const rawMargin = (qty * contractSize * entry) / LEVERAGE;
+  if (rawMargin > maxMargin) {
+    const cappedQty = Math.max(1, Math.floor((maxMargin * LEVERAGE) / (contractSize * entry)));
+    console.log(`⚠️ ${symbol}: Margin cap — qty ${qty} → ${cappedQty} (margin $${rawMargin.toFixed(4)} > max $${maxMargin.toFixed(4)})`);
+    qty = cappedQty;
+  }
+
+  // ── ΒΗΜΑ 3: Τελικός υπολογισμός με το (ενδεχομένως μειωμένο) qty ────
   const notional       = qty * contractSize * entry;
   const marginRequired = notional / LEVERAGE;
 
-  // ── MEXC Trading Fee (maker 0.02% × notional) ────────────────────────
-  const openFee        = notional * MAKER_FEE;   // fee για άνοιγμα
-  const closeFeeEst    = notional * MAKER_FEE;   // εκτιμώμενο fee κλεισίματος
-  const totalCost      = marginRequired + openFee;
+  // ── ΒΗΜΑ 4: MEXC Trading Fees ────────────────────────────────────────
+  const openFee     = notional * MAKER_FEE;    // 0.02% άνοιγμα (limit order)
+  const closeFeeEst = notional * MAKER_FEE;    // 0.02% εκτίμηση κλεισίματος
+  const totalCost   = marginRequired + openFee;
 
-  // ── ΑΥΣΤΗΡΟΣ ΕΛΕΓΧΟΣ — ακριβώς όπως η MEXC ─────────────────────────
-  // Η MEXC απαιτεί: available >= initialMargin + openFee
+  // ── ΒΗΜΑ 5: Αυστηρός τελικός έλεγχος ────────────────────────────────
   if (availableBalance < totalCost) {
     const msg = `Ανεπαρκές margin: χρειάζεται $${totalCost.toFixed(4)} (margin $${marginRequired.toFixed(4)} + fee $${openFee.toFixed(4)}), διαθέσιμο $${availableBalance.toFixed(4)}`;
     console.log(`❌ ${symbol}: ${msg}`);
     return { success: false, error: msg };
   }
 
-  // ── Risk & PnL (μετά από fees) ────────────────────────────────────────
-  const riskAmount      = availableBalance * riskPercent / 100;
-  // Πραγματικό max loss = riskAmount + openFee + closeFee (αν SL)
-  const potentialLoss   = parseFloat((riskAmount + openFee + closeFeeEst).toFixed(4));
-  // Πραγματικό max profit = riskAmount*2.5 - openFee - closeFee (αν TP)
-  const potentialProfit = parseFloat((riskAmount * 2.5 - openFee - closeFeeEst).toFixed(4));
+  // ── ΒΗΜΑ 6: Πραγματικό risk βάσει του τελικού qty (μετά από cap) ─────
+  // Αν κάναμε cap, το actual risk είναι μικρότερο από 2.5%
+  const slDistance      = Math.abs(entry - sl);
+  const actualRisk      = qty * contractSize * slDistance;  // τι χάνεις αν πάει SL
+  const potentialLoss   = parseFloat((actualRisk + openFee + closeFeeEst).toFixed(4));
+  const potentialProfit = parseFloat((actualRisk * 2.5 - openFee - closeFeeEst).toFixed(4));
+  const actualRiskPct   = availableBalance > 0 ? parseFloat(((actualRisk / availableBalance) * 100).toFixed(2)) : 0;
 
-  const positionSize = parseFloat(notional.toFixed(4));
+  const positionSize    = parseFloat(notional.toFixed(4));
 
   const orderData = {
     signalId,
@@ -145,11 +156,13 @@ export async function executeSignalLocal(signal) {
     sl,
     tp,
     rr:                2.5,
-    riskAmount:        parseFloat(riskAmount.toFixed(4)),
+    riskAmount:        parseFloat(actualRisk.toFixed(4)),
+    riskPercent:       actualRiskPct,
     potentialProfit,
     potentialLoss,
     positionSize,
     marginRequired:    parseFloat(marginRequired.toFixed(4)),
+    marginPct:         parseFloat(((marginRequired / availableBalance) * 100).toFixed(2)),
     openFee:           parseFloat(openFee.toFixed(4)),
     availableAtOpen:   parseFloat(availableBalance.toFixed(4)),
     limitOrderId:      null,
@@ -166,21 +179,22 @@ export async function executeSignalLocal(signal) {
   activeOrders.set(signalId, orderData);
   saveActive();
 
-  console.log(`📋 LOCAL [${type}] ${symbol} @ ${entry} | R:R 2.5 | Risk: $${riskAmount.toFixed(2)} | Margin: $${marginRequired.toFixed(2)} | Available: $${availableBalance.toFixed(2)}`);
+  console.log(`📋 LOCAL [${type}] ${symbol} @ ${entry} | R:R 2.5 | Risk: $${actualRisk.toFixed(4)} (${actualRiskPct}%) | Margin: $${marginRequired.toFixed(4)} (${((marginRequired/availableBalance)*100).toFixed(1)}%) | Available: $${availableBalance.toFixed(4)}`);
 
   return {
-    success:        true,
+    success:          true,
     signalId,
     symbol,
-    entryPrice:     entry,
+    entryPrice:       entry,
     sl, tp,
-    quantity:       qty,
-    local:          true,
-    riskAmount:     parseFloat(riskAmount.toFixed(2)),
+    quantity:         qty,
+    local:            true,
+    riskAmount:       parseFloat(actualRisk.toFixed(4)),
+    actualRiskPct,
     potentialProfit,
     potentialLoss,
-    marginRequired,
-    availableBalance: parseFloat(availableBalance.toFixed(2)),
+    marginRequired:   parseFloat(marginRequired.toFixed(4)),
+    availableBalance: parseFloat(availableBalance.toFixed(4)),
   };
 }
 
