@@ -30,10 +30,11 @@ import {
   resetSimulation,
 } from './orderManager.js';
 
-const __dirname     = dirname(fileURLToPath(import.meta.url));
-const app           = express();
-const PORT          = process.env.PORT || 8080;
-const SETTINGS_FILE = '/tmp/bot_settings_mexc.json';
+const __dirname       = dirname(fileURLToPath(import.meta.url));
+const app             = express();
+const PORT            = process.env.PORT || 8080;
+const SETTINGS_FILE   = '/tmp/bot_settings_mexc.json';
+const DISABLED_FILE   = '/tmp/disabled_pairs_mexc.json';
 
 app.use(cors());
 app.use(express.json());
@@ -70,6 +71,39 @@ function saveSettings(s) {
 }
 
 let botSettings = loadSettings();
+
+// ─── DISABLED PAIRS ───────────────────────────────────────────────────
+
+function loadDisabledPairs() {
+  try {
+    if (existsSync(DISABLED_FILE)) return JSON.parse(readFileSync(DISABLED_FILE, 'utf8'));
+  } catch {}
+  return [];
+}
+
+function saveDisabledPairs(list) {
+  try { writeFileSync(DISABLED_FILE, JSON.stringify(list, null, 2)); } catch {}
+}
+
+let disabledPairs = loadDisabledPairs();
+
+// ─── ALL PAIRS CACHE ──────────────────────────────────────────────────
+
+let allMexcPairs    = [];
+let pairsCachedAt   = 0;
+const PAIRS_CACHE_MS = 10 * 60 * 1000; // 10 λεπτά
+
+async function getAllPairs() {
+  if (allMexcPairs.length && Date.now() - pairsCachedAt < PAIRS_CACHE_MS) return allMexcPairs;
+  const symbols = await fetchAllSymbols();
+  if (symbols.length) { allMexcPairs = symbols; pairsCachedAt = Date.now(); }
+  return allMexcPairs;
+}
+
+function getActivePairs() {
+  const disabled = new Set(disabledPairs);
+  return allMexcPairs.filter(s => !disabled.has(s));
+}
 
 // ─── HELPERS ──────────────────────────────────────────────────────────
 
@@ -146,15 +180,23 @@ app.post('/settings', (req, res) => {
 });
 
 // ─── START ────────────────────────────────────────────────────────────
+// Αν δεν δοθούν pairs → φορτώνει ΟΛΕΣ τις MEXC futures παρ. disabled
 app.post('/start', async (req, res) => {
   const { pairs } = req.body;
+  let activePairList;
+
   if (!pairs || !Array.isArray(pairs) || pairs.length === 0) {
-    return res.status(400).json({ error: 'Δώσε pairs: ["BTCUSDT", ...]' });
+    // Αυτόματη φόρτωση όλων των pairs
+    await getAllPairs();
+    activePairList = getActivePairs();
+    if (activePairList.length === 0) return res.status(500).json({ error: 'Δεν βρέθηκαν pairs από MEXC' });
+  } else {
+    activePairList = pairs;
   }
-  // Ο bot ξεκινά ακόμα και χωρίς API keys (local mode)
-  const started = await startBot(pairs, botSettings);
+
+  const started = await startBot(activePairList, botSettings);
   res.json(started
-    ? { success: true,  message: `Bot ξεκίνησε (Local Mode): ${pairs.join(', ')}` }
+    ? { success: true,  message: `Bot ξεκίνησε: ${activePairList.length} pairs (${disabledPairs.length} disabled)` }
     : { success: false, error:   'Τρέχει ήδη ή δεν υπάρχει σύνδεση' }
   );
 });
@@ -165,7 +207,55 @@ app.post('/stop', (req, res) => {
   res.json({ success: true });
 });
 
-// ─── PAIRS ────────────────────────────────────────────────────────────
+// ─── PAIRS — όλα (με status enabled/disabled) ─────────────────────────
+app.get('/pairs/all', async (req, res) => {
+  try {
+    const all      = await getAllPairs();
+    const disabled = new Set(disabledPairs);
+    res.json({
+      total:    all.length,
+      active:   all.length - disabled.size,
+      disabled: disabledPairs.length,
+      pairs:    all.map(s => ({ symbol: s, enabled: !disabled.has(s) })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DISABLE pair ─────────────────────────────────────────────────────
+app.post('/pairs/disable/:symbol', (req, res) => {
+  const symbol = req.params.symbol.toUpperCase();
+  if (!disabledPairs.includes(symbol)) {
+    disabledPairs.push(symbol);
+    saveDisabledPairs(disabledPairs);
+    // Αφαίρεση από ενεργά pairs του bot αμέσως
+    updatePairs(getActivePairs());
+    console.log(`🔕 Disabled: ${symbol}`);
+  }
+  res.json({ success: true, symbol, disabled: true, totalDisabled: disabledPairs.length });
+});
+
+// ─── ENABLE pair ──────────────────────────────────────────────────────
+app.post('/pairs/enable/:symbol', (req, res) => {
+  const symbol = req.params.symbol.toUpperCase();
+  disabledPairs = disabledPairs.filter(s => s !== symbol);
+  saveDisabledPairs(disabledPairs);
+  // Επαναφορά στα ενεργά pairs
+  updatePairs(getActivePairs());
+  console.log(`🔔 Enabled: ${symbol}`);
+  res.json({ success: true, symbol, disabled: false, totalDisabled: disabledPairs.length });
+});
+
+// ─── ENABLE ALL pairs ─────────────────────────────────────────────────
+app.post('/pairs/enable-all', (req, res) => {
+  disabledPairs = [];
+  saveDisabledPairs(disabledPairs);
+  updatePairs(getActivePairs());
+  res.json({ success: true, message: 'Όλα τα pairs ενεργοποιήθηκαν' });
+});
+
+// ─── PAIRS (legacy endpoint) ──────────────────────────────────────────
 app.post('/pairs', (req, res) => {
   const { pairs } = req.body;
   if (!pairs || !Array.isArray(pairs)) return res.status(400).json({ error: 'Δώσε pairs: [...]' });
@@ -492,4 +582,16 @@ app.listen(PORT, () => {
   console.log(`📋 Mode: LOCAL → MEXC on demand`);
   console.log(`🔑 API Keys: ${hasKeys() ? '✅ Configured' : '⚠️  Not set (Local only)'}`);
   console.log(`⚙️  Risk: ${botSettings.riskPercent}% | SimBalance: $${botSettings.initialBalance}\n`);
+
+  // ── Auto-start: φορτώνει ΟΛΕΣ τις MEXC pairs και ξεκινά αμέσως ──────
+  console.log('⏳ Φόρτωση όλων των MEXC pairs...');
+  try {
+    const pairs = await getAllPairs();
+    const active = getActivePairs();
+    console.log(`📊 ${pairs.length} pairs φορτώθηκαν | ${disabledPairs.length} disabled | ${active.length} ενεργά`);
+    const ok = await startBot(active, botSettings);
+    if (ok) console.log(`🚀 Bot ξεκίνησε αυτόματα με ${active.length} pairs!\n`);
+  } catch (err) {
+    console.error('⚠️ Auto-start error:', err.message);
+  }
 });
