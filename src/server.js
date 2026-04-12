@@ -585,13 +585,15 @@ app.listen(PORT, () => {
 
   // ── Auto-start: φορτώνει ΟΛΕΣ τις MEXC pairs και ξεκινά αμέσως ──────
   console.log('⏳ Φόρτωση όλων των MEXC pairs...');
-  try {
-    const pairs = await getAllPairs();
-    const active = getActivePairs();
-    console.log(`📊 ${pairs.length} pairs φορτώθηκαν | ${disabledPairs.length} disabled | ${active.length} ενεργά`);
-    const ok = await startBot(active, botSettings);
-    if (ok) console.log(`🚀 Bot ξεκίνησε αυτόματα με ${active.length} pairs!\n`);
-  } catch (err) {
-    console.error('⚠️ Auto-start error:', err.message);
-  }
+  (async () => {
+    try {
+      const pairs  = await getAllPairs();
+      const active = getActivePairs();
+      console.log(`📊 ${pairs.length} pairs φορτώθηκαν | ${disabledPairs.length} disabled | ${active.length} ενεργά`);
+      const ok = await startBot(active, botSettings);
+      if (ok) console.log(`🚀 Bot ξεκίνησε αυτόματα με ${active.length} pairs!\n`);
+    } catch (err) {
+      console.error('⚠️ Auto-start error:', err.message);
+    }
+  })();
 });
