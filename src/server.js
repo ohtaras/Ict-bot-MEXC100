@@ -26,6 +26,7 @@ import {
   getLocalHistory,
   getStats,
   getLocalStats,
+  getAvailableSimBalance,
 } from './orderManager.js';
 
 const __dirname     = dirname(fileURLToPath(import.meta.url));
@@ -40,8 +41,8 @@ app.use(express.static(join(__dirname, '../public')));
 // ─── SETTINGS ─────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS = {
-  riskPercent:    parseFloat(process.env.RISK_PERCENT || '2'),
-  initialBalance: 10000,
+  riskPercent:    parseFloat(process.env.RISK_PERCENT || '2.5'),
+  initialBalance: parseFloat(process.env.SIM_BALANCE  || '100'),
   leverage:       10,
   scanInterval:   60,
   priceInterval:  15,
@@ -429,9 +430,11 @@ app.get('/history/local', (req, res) => res.json(getLocalHistory()));
 // ─── STATS ────────────────────────────────────────────────────────────
 app.get('/stats', (req, res) => {
   res.json({
-    mexc:     getStats(),
-    local:    getLocalStats(),
-    settings: botSettings,
+    mexc:              getStats(),
+    local:             getLocalStats(),
+    settings:          botSettings,
+    simAvailableBalance: getAvailableSimBalance(),
+    simInitialBalance:   botSettings.initialBalance,
   });
 });
 

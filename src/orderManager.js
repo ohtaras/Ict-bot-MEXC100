@@ -52,11 +52,36 @@ function saveLocalHistory() { saveJSON(LOCAL_HISTORY_FILE, localHistory); }
 // ─── HELPERS ──────────────────────────────────────────────────────────
 
 function getRisk() {
-  return parseFloat(process.env.RISK_PERCENT || '1.5');
+  return parseFloat(process.env.RISK_PERCENT || '2.5');
 }
 
 function getSimBalance() {
-  return parseFloat(process.env.SIM_BALANCE || '10000');
+  return parseFloat(process.env.SIM_BALANCE || '100');
+}
+
+/**
+ * Υπολογισμός δεσμευμένου margin για ένα ανοιχτό paper order
+ * MEXC Isolated Margin = (contracts × contractSize × entryPrice) / leverage
+ */
+function calcLockedMargin(order) {
+  return (order.quantity * (order.contractSize || 0.001) * order.entryPrice) / (order.leverage || LEVERAGE);
+}
+
+/**
+ * Διαθέσιμο simulation balance = αρχικό + realized PnL - δεσμευμένα margins
+ * Αντικατοπτρίζει ακριβώς το "Available Balance" της MEXC σε isolated mode
+ */
+export function getAvailableSimBalance() {
+  const initial      = getSimBalance();
+  const realizedPnl  = localHistory.reduce((sum, t) => sum + (t.pnl || 0), 0);
+  const currentBal   = initial + realizedPnl;
+  let   lockedMargin = 0;
+  for (const order of activeOrders.values()) {
+    if (order.isLocal && order.status === 'open_local') {
+      lockedMargin += calcLockedMargin(order);
+    }
+  }
+  return Math.max(0, parseFloat((currentBal - lockedMargin).toFixed(4)));
 }
 
 function roundTick(value, tickSize) {
@@ -70,61 +95,77 @@ function roundTick(value, tickSize) {
 export async function executeSignalLocal(signal) {
   const { id: signalId, pair: symbol, type, side, entry, sl, tp } = signal;
 
-  const riskPercent     = getRisk();
-  const simBalance      = getSimBalance();
-  const riskAmount      = simBalance * riskPercent / 100;
+  const riskPercent    = getRisk();
+  const availableBalance = getAvailableSimBalance();
+
+  // Απόρριψη αν δεν υπάρχει αρκετό διαθέσιμο κεφάλαιο για 1 contract
+  const contractSize    = 0.001;
+  const minMargin       = (1 * contractSize * entry) / LEVERAGE;
+  if (availableBalance < minMargin) {
+    return { success: false, error: `Ανεπαρκές διαθέσιμο κεφάλαιο: $${availableBalance.toFixed(2)} (χρειάζεται $${minMargin.toFixed(2)})` };
+  }
+
+  // Υπολογισμός risk βάσει ΔΙΑΘΕΣΙΜΟΥ κεφαλαίου (όχι ολικού)
+  const riskAmount      = availableBalance * riskPercent / 100;
   const potentialProfit = parseFloat((riskAmount * 2.5).toFixed(2));
   const potentialLoss   = parseFloat(riskAmount.toFixed(2));
 
-  // Approximate qty για simulation (contractSize = 0.001 default)
-  const contractSize = 0.001;
   let qty = 1;
   try {
-    qty = calculatePositionSize(simBalance, riskPercent, entry, sl, contractSize, LEVERAGE);
+    qty = calculatePositionSize(availableBalance, riskPercent, entry, sl, contractSize, LEVERAGE);
   } catch {}
+
+  // Margin που δεσμεύεται για αυτή τη θέση (MEXC Isolated Margin)
+  const marginRequired  = parseFloat(((qty * contractSize * entry) / LEVERAGE).toFixed(4));
+
+  const positionSize = parseFloat((qty * contractSize * entry).toFixed(2));
 
   const orderData = {
     signalId,
     symbol,
-    quantity:        qty,
+    quantity:          qty,
     contractSize,
     side,
     type,
-    entryPrice:      entry,
+    entryPrice:        entry,
     sl,
     tp,
-    rr:              2.5,
-    riskAmount:      parseFloat(riskAmount.toFixed(2)),
+    rr:                2.5,
+    riskAmount:        parseFloat(riskAmount.toFixed(2)),
     potentialProfit,
     potentialLoss,
-    positionSize:    parseFloat((qty * contractSize * entry).toFixed(2)),
-    limitOrderId:    null,
-    status:          'open_local',   // simulation: immediately "open"
-    isLocal:         true,
-    sentToMEXC:      false,
-    openTime:        Date.now(),
-    placedAt:        Date.now(),
-    expireAt:        signal.expireAt || Date.now() + 4 * 60 * 60 * 1000,
-    leverage:        LEVERAGE,
-    synced:          false,
+    positionSize,
+    marginRequired,              // δεσμευμένο margin (MEXC isolated)
+    availableAtOpen:   parseFloat(availableBalance.toFixed(2)), // διαθέσιμο balance τη στιγμή της εντολής
+    limitOrderId:      null,
+    status:            'open_local',
+    isLocal:           true,
+    sentToMEXC:        false,
+    openTime:          Date.now(),
+    placedAt:          Date.now(),
+    expireAt:          signal.expireAt || Date.now() + 4 * 60 * 60 * 1000,
+    leverage:          LEVERAGE,
+    synced:            false,
   };
 
   activeOrders.set(signalId, orderData);
   saveActive();
 
-  console.log(`📋 LOCAL [${type}] ${symbol} @ ${entry} | R:R 2.5 | Risk: $${riskAmount.toFixed(2)}`);
+  console.log(`📋 LOCAL [${type}] ${symbol} @ ${entry} | R:R 2.5 | Risk: $${riskAmount.toFixed(2)} | Margin: $${marginRequired.toFixed(2)} | Available: $${availableBalance.toFixed(2)}`);
 
   return {
-    success:      true,
+    success:        true,
     signalId,
     symbol,
-    entryPrice:   entry,
+    entryPrice:     entry,
     sl, tp,
-    quantity:     qty,
-    local:        true,
-    riskAmount:   parseFloat(riskAmount.toFixed(2)),
+    quantity:       qty,
+    local:          true,
+    riskAmount:     parseFloat(riskAmount.toFixed(2)),
     potentialProfit,
     potentialLoss,
+    marginRequired,
+    availableBalance: parseFloat(availableBalance.toFixed(2)),
   };
 }
 

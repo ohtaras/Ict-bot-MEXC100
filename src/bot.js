@@ -14,6 +14,7 @@ import {
   checkAndCloseSLTP,
   closeLocalOrder,
   getStats,
+  getAvailableSimBalance,
 } from './orderManager.js';
 
 let isRunning    = false;
@@ -46,15 +47,16 @@ async function scanPair(symbol) {
     if (candles.length < 30) return [];
     const signals = ictCoreEngine(candles, symbol);
 
-    // Pre-calculate simulation sizing so UI shows data immediately (before trigger)
-    const simBalance  = parseFloat(process.env.SIM_BALANCE  || '10000');
-    const riskPercent = parseFloat(process.env.RISK_PERCENT || '1.5');
-    const riskAmount  = parseFloat((simBalance * riskPercent / 100).toFixed(2));
+    // Pre-calculate simulation sizing — χρησιμοποιεί ΔΙΑΘΕΣΙΜΟ balance (μετά locked margins)
+    const availBal    = getAvailableSimBalance();
+    const riskPercent = parseFloat(process.env.RISK_PERCENT || '2.5');
+    const riskAmount  = parseFloat((availBal * riskPercent / 100).toFixed(2));
     for (const s of signals) {
       s.riskAmount      = riskAmount;
       s.positionSize    = parseFloat((riskAmount * 10).toFixed(2)); // 10x leverage preview
       s.potentialProfit = parseFloat((riskAmount * 2.5).toFixed(2));
       s.potentialLoss   = riskAmount;
+      s.simAvailable    = parseFloat(availBal.toFixed(2));
     }
 
     if (signals.length > 0) log(`🔍 ${symbol}: ${signals.length} signal(s)`);
