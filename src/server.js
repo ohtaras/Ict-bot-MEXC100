@@ -27,6 +27,7 @@ import {
   getStats,
   getLocalStats,
   getAvailableSimBalance,
+  resetSimulation,
 } from './orderManager.js';
 
 const __dirname     = dirname(fileURLToPath(import.meta.url));
@@ -454,6 +455,22 @@ app.post('/cancel-all', async (req, res) => {
   try {
     const results = await cancelAllSignalOrders();
     res.json({ cancelled: results.length, results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── RESET SIMULATION ─────────────────────────────────────────────────
+// Καθαρίζει όλες τις paper θέσεις & history — φρέσκο ξεκίνημα
+app.post('/reset-sim', (req, res) => {
+  try {
+    const result = resetSimulation();
+    console.log(`🔄 Simulation reset! Νέο balance: $${botSettings.initialBalance}`);
+    res.json({
+      ...result,
+      initialBalance:   botSettings.initialBalance,
+      availableBalance: botSettings.initialBalance,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

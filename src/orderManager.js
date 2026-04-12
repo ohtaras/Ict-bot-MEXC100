@@ -22,9 +22,12 @@ import {
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 
 const LEVERAGE          = 10;
+const MAKER_FEE         = 0.0002;   // 0.02% — MEXC Futures limit order fee
+const TAKER_FEE         = 0.0006;   // 0.06% — MEXC Futures market order fee
 const STORAGE           = '/tmp/active_orders_mexc.json';
 const HISTORY_FILE      = '/tmp/trade_history_mexc.json';
 const LOCAL_HISTORY_FILE = '/tmp/local_history_mexc.json';
+const SIM_RESET_FILE    = '/tmp/sim_reset_mexc.json';
 
 // ─── PERSISTENCE ──────────────────────────────────────────────────────
 
@@ -90,35 +93,46 @@ function roundTick(value, tickSize) {
 }
 
 // ─── LOCAL EXECUTION (Paper Trading) ─────────────────────────────────
-// Κάθε signal αποθηκεύεται τοπικά πρώτα — χωρίς καμία κλήση στο MEXC
+// Προσομοιώνει ακριβώς τη συμπεριφορά MEXC Futures Isolated Margin
 
 export async function executeSignalLocal(signal) {
   const { id: signalId, pair: symbol, type, side, entry, sl, tp } = signal;
 
-  const riskPercent    = getRisk();
+  const riskPercent      = getRisk();
   const availableBalance = getAvailableSimBalance();
+  const contractSize     = 0.001;
 
-  // Απόρριψη αν δεν υπάρχει αρκετό διαθέσιμο κεφάλαιο για 1 contract
-  const contractSize    = 0.001;
-  const minMargin       = (1 * contractSize * entry) / LEVERAGE;
-  if (availableBalance < minMargin) {
-    return { success: false, error: `Ανεπαρκές διαθέσιμο κεφάλαιο: $${availableBalance.toFixed(2)} (χρειάζεται $${minMargin.toFixed(2)})` };
-  }
-
-  // Υπολογισμός risk βάσει ΔΙΑΘΕΣΙΜΟΥ κεφαλαίου (όχι ολικού)
-  const riskAmount      = availableBalance * riskPercent / 100;
-  const potentialProfit = parseFloat((riskAmount * 2.5).toFixed(2));
-  const potentialLoss   = parseFloat(riskAmount.toFixed(2));
-
+  // ── Υπολογισμός qty βάσει ΔΙΑΘΕΣΙΜΟΥ κεφαλαίου ─────────────────────
   let qty = 1;
   try {
     qty = calculatePositionSize(availableBalance, riskPercent, entry, sl, contractSize, LEVERAGE);
   } catch {}
 
-  // Margin που δεσμεύεται για αυτή τη θέση (MEXC Isolated Margin)
-  const marginRequired  = parseFloat(((qty * contractSize * entry) / LEVERAGE).toFixed(4));
+  // ── MEXC Isolated Margin = notional / leverage ───────────────────────
+  const notional       = qty * contractSize * entry;
+  const marginRequired = notional / LEVERAGE;
 
-  const positionSize = parseFloat((qty * contractSize * entry).toFixed(2));
+  // ── MEXC Trading Fee (maker 0.02% × notional) ────────────────────────
+  const openFee        = notional * MAKER_FEE;   // fee για άνοιγμα
+  const closeFeeEst    = notional * MAKER_FEE;   // εκτιμώμενο fee κλεισίματος
+  const totalCost      = marginRequired + openFee;
+
+  // ── ΑΥΣΤΗΡΟΣ ΕΛΕΓΧΟΣ — ακριβώς όπως η MEXC ─────────────────────────
+  // Η MEXC απαιτεί: available >= initialMargin + openFee
+  if (availableBalance < totalCost) {
+    const msg = `Ανεπαρκές margin: χρειάζεται $${totalCost.toFixed(4)} (margin $${marginRequired.toFixed(4)} + fee $${openFee.toFixed(4)}), διαθέσιμο $${availableBalance.toFixed(4)}`;
+    console.log(`❌ ${symbol}: ${msg}`);
+    return { success: false, error: msg };
+  }
+
+  // ── Risk & PnL (μετά από fees) ────────────────────────────────────────
+  const riskAmount      = availableBalance * riskPercent / 100;
+  // Πραγματικό max loss = riskAmount + openFee + closeFee (αν SL)
+  const potentialLoss   = parseFloat((riskAmount + openFee + closeFeeEst).toFixed(4));
+  // Πραγματικό max profit = riskAmount*2.5 - openFee - closeFee (αν TP)
+  const potentialProfit = parseFloat((riskAmount * 2.5 - openFee - closeFeeEst).toFixed(4));
+
+  const positionSize = parseFloat(notional.toFixed(4));
 
   const orderData = {
     signalId,
@@ -131,12 +145,13 @@ export async function executeSignalLocal(signal) {
     sl,
     tp,
     rr:                2.5,
-    riskAmount:        parseFloat(riskAmount.toFixed(2)),
+    riskAmount:        parseFloat(riskAmount.toFixed(4)),
     potentialProfit,
     potentialLoss,
     positionSize,
-    marginRequired,              // δεσμευμένο margin (MEXC isolated)
-    availableAtOpen:   parseFloat(availableBalance.toFixed(2)), // διαθέσιμο balance τη στιγμή της εντολής
+    marginRequired:    parseFloat(marginRequired.toFixed(4)),
+    openFee:           parseFloat(openFee.toFixed(4)),
+    availableAtOpen:   parseFloat(availableBalance.toFixed(4)),
     limitOrderId:      null,
     status:            'open_local',
     isLocal:           true,
@@ -170,47 +185,48 @@ export async function executeSignalLocal(signal) {
 }
 
 // ─── CLOSE LOCAL (Simulation) ─────────────────────────────────────────
-// Κλείνει τοπικά — χωρίς κλήση στο MEXC
+// Προσομοιώνει MEXC: PnL = raw price move - openFee - closeFee
 
 export function closeLocalOrder(signalId, reason, closePrice) {
   const order = activeOrders.get(signalId);
   if (!order || order.status !== 'open_local') return;
 
-  let pnl, pnlPct;
+  const cp          = parseFloat(closePrice) || order.entryPrice;
+  const cs          = order.contractSize || 0.001;
+  const qty         = order.quantity || 1;
+  const isLong      = order.side === 'BUY';
 
-  if (reason === 'TP') {
-    pnl    = order.potentialProfit;
-    pnlPct = 250;
-  } else if (reason === 'SL') {
-    pnl    = -order.potentialLoss;
-    pnlPct = -100;
-  } else {
-    // manual_close: υπολογισμός πραγματικού PnL από κίνηση τιμής
-    const cp      = parseFloat(closePrice) || order.entryPrice;
-    const slDist  = Math.abs(order.entryPrice - (order.sl || order.entryPrice));
-    if (slDist > 0 && order.potentialLoss) {
-      const move = order.side === 'BUY'
-        ? cp - order.entryPrice
-        : order.entryPrice - cp;
-      pnl    = parseFloat(((move / slDist) * order.potentialLoss).toFixed(2));
-      const tpDist = Math.abs((order.tp || order.entryPrice) - order.entryPrice);
-      pnlPct = tpDist > 0 ? parseFloat(((move / tpDist) * 250).toFixed(1)) : 0;
-    } else {
-      pnl    = 0;
-      pnlPct = 0;
-    }
-  }
+  // ── Raw PnL από κίνηση τιμής ─────────────────────────────────────────
+  const rawPnl = isLong
+    ? (cp - order.entryPrice) * qty * cs
+    : (order.entryPrice - cp) * qty * cs;
 
-  // Αν η εντολή έκλεισε με κέρδος → 'won', με ζημιά → 'lost', στο μηδέν → 'manual_close'
-  const result = pnl > 0 ? 'won' : pnl < 0 ? 'lost' : 'manual_close';
+  // ── MEXC Fees ────────────────────────────────────────────────────────
+  // Άνοιγμα: maker fee (0.02%) — κλείσιμο: market fee (0.06%) αν SL/TP hit
+  const closeNotional = qty * cs * cp;
+  const openFee   = order.openFee || (qty * cs * order.entryPrice * MAKER_FEE);
+  const closeFee  = closeNotional * (reason === 'manual_close' ? MAKER_FEE : TAKER_FEE);
+  const totalFees = openFee + closeFee;
+
+  const pnl     = parseFloat((rawPnl - totalFees).toFixed(4));
+
+  // ── PnL% βάσει margin που δεσμεύτηκε ────────────────────────────────
+  const margin  = order.marginRequired || (qty * cs * order.entryPrice / LEVERAGE);
+  const pnlPct  = margin > 0 ? parseFloat(((pnl / margin) * 100).toFixed(2)) : 0;
+
+  const result  = pnl > 0 ? 'won' : pnl < 0 ? 'lost' : 'manual_close';
 
   const closed = {
     ...order,
     closeTime:   Date.now(),
-    closePrice:  parseFloat(closePrice) || order.entryPrice,
+    closePrice:  cp,
     closeReason: reason,
     result,
-    pnl:         parseFloat(pnl.toFixed(4)),
+    rawPnl:      parseFloat(rawPnl.toFixed(4)),
+    fees:        parseFloat(totalFees.toFixed(4)),
+    openFee:     parseFloat(openFee.toFixed(4)),
+    closeFee:    parseFloat(closeFee.toFixed(4)),
+    pnl,
     pnlPct,
     duration:    Date.now() - order.openTime,
     isLocal:     true,
@@ -223,7 +239,7 @@ export function closeLocalOrder(signalId, reason, closePrice) {
   activeOrders.delete(signalId);
   saveActive();
 
-  console.log(`📋 LOCAL CLOSE ${order.symbol} (${reason}) PnL: $${pnl.toFixed(2)} [${result}]`);
+  console.log(`📋 LOCAL CLOSE ${order.symbol} (${reason}) rawPnL: $${rawPnl.toFixed(4)} fees: $${totalFees.toFixed(4)} netPnL: $${pnl.toFixed(4)} [${result}]`);
 }
 
 // ─── SEND TO MEXC ─────────────────────────────────────────────────────
@@ -531,4 +547,19 @@ export async function hasOpenOrdersForSymbol(symbol) {
   } catch {
     return false;
   }
+}
+
+// ─── RESET SIMULATION ─────────────────────────────────────────────────
+// Σβήνει όλες τις paper θέσεις και το history — φρέσκο ξεκίνημα
+
+export function resetSimulation() {
+  // Κρατά μόνο real MEXC orders (isLocal = false)
+  for (const [id, order] of activeOrders.entries()) {
+    if (order.isLocal) activeOrders.delete(id);
+  }
+  localHistory.length = 0;
+  saveActive();
+  saveLocalHistory();
+  console.log('🔄 Simulation reset — νέο ξεκίνημα με $' + getSimBalance());
+  return { success: true, message: `Simulation reset. Νέο balance: $${getSimBalance()}` };
 }
