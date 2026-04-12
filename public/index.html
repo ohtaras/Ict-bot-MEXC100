@@ -225,6 +225,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   </div>
 </div>
 
+<div class="modal-bg" id="modal-reset">
+  <div class="modal">
+    <div class="modal-icon">🔄</div>
+    <div class="modal-title">Reset Simulation</div>
+    <div class="modal-desc">Θα διαγραφούν όλες οι paper θέσεις και το ιστορικό.<br>Το balance επιστρέφει στα <strong style="color:var(--text)">$100</strong>.<br><br>Η ενέργεια δεν αναιρείται.</div>
+    <div class="modal-btns">
+      <button class="mbtn" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.4);color:var(--amber)" onclick="confirmReset()">🔄 Ναι, Reset</button>
+      <button class="mbtn mbtn-gray" onclick="closeResetModal()">Άκυρο</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div class="page">
@@ -253,6 +265,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       <span class="pill p-red"  id="run-pill"><span class="dot"></span><span id="run-txt">Σύνδεση...</span></span>
       <button class="btn btn-green" id="btn-start" onclick="startBot()">▶ Εκκίνηση</button>
       <button class="btn btn-gray"  id="btn-stop"  onclick="stopBot()">■ Σταμάτημα</button>
+      <button class="btn btn-amber" onclick="showResetModal()">🔄 Reset Sim</button>
       <button class="btn btn-red"   onclick="showModal()">⛔ Panic</button>
     </div>
   </div>
@@ -515,9 +528,29 @@ function showPage(name, el) {
   if (name==='settings')  loadSettingsUI();
 }
 
-// ── MODAL ─────────────────────────────────────────────────────────────
+// ── MODAL PANIC ───────────────────────────────────────────────────────
 function showModal()  { document.getElementById('modal').classList.add('open'); }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+// ── MODAL RESET ───────────────────────────────────────────────────────
+function showResetModal()  { document.getElementById('modal-reset').classList.add('open'); }
+function closeResetModal() { document.getElementById('modal-reset').classList.remove('open'); }
+
+async function confirmReset() {
+  closeResetModal();
+  try {
+    const r = await fetch(API+'/reset-sim', {method:'POST'});
+    const d = await r.json();
+    if (d.success) {
+      toast('🔄 Simulation reset! Balance: $' + (d.initialBalance||100), 'ok');
+      setTimeout(() => { loadStatus(); loadPnl(); }, 500);
+    } else {
+      toast(d.error || 'Reset απέτυχε', 'err');
+    }
+  } catch(e) {
+    toast('Reset error: '+e.message, 'err');
+  }
+}
 
 async function confirmPanic() {
   closeModal();
