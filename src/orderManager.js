@@ -24,7 +24,9 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 const LEVERAGE          = 10;
 const MAKER_FEE         = 0.0002;   // 0.02% — MEXC Futures limit order fee
 const TAKER_FEE         = 0.0006;   // 0.06% — MEXC Futures market order fee
-const MAX_MARGIN_PCT    = 0.15;     // Max 15% of available balance σε margin ανά θέση (position size limiter)
+const MAX_MARGIN_PCT    = 0.15;     // Max 15% του available balance σε margin ανά θέση
+const MAX_OPEN_LOCAL    = 5;        // Max ανοιχτές paper θέσεις ταυτόχρονα
+const MIN_BALANCE_PCT   = 0.10;     // Μην ανοίγεις αν available < 10% του αρχικού κεφαλαίου
 const STORAGE           = '/tmp/active_orders_mexc.json';
 const HISTORY_FILE      = '/tmp/trade_history_mexc.json';
 const LOCAL_HISTORY_FILE = '/tmp/local_history_mexc.json';
@@ -101,8 +103,22 @@ export async function executeSignalLocal(signal) {
 
   const riskPercent      = getRisk();
   const availableBalance = getAvailableSimBalance();
+  const initialBalance   = getSimBalance();
   const contractSize     = 0.001;
   const maxMargin        = availableBalance * MAX_MARGIN_PCT;  // 15% του available
+
+  // ── ΕΛΕΓΧΟΣ 1: Max ανοιχτές θέσεις ──────────────────────────────────
+  const openLocalCount = Array.from(activeOrders.values())
+    .filter(o => o.isLocal && o.status === 'open_local').length;
+  if (openLocalCount >= MAX_OPEN_LOCAL) {
+    return { success: false, error: `Max θέσεις (${MAX_OPEN_LOCAL}) — περίμενε να κλείσει κάποια` };
+  }
+
+  // ── ΕΛΕΓΧΟΣ 2: Minimum balance threshold ─────────────────────────────
+  const minBalance = initialBalance * MIN_BALANCE_PCT;
+  if (availableBalance < minBalance) {
+    return { success: false, error: `Available $${availableBalance.toFixed(2)} < minimum $${minBalance.toFixed(2)} (${MIN_BALANCE_PCT*100}% του αρχικού)` };
+  }
 
   // ── ΒΗΜΑ 1: Υπολογισμός qty βάσει risk (2.5% × available) ───────────
   let qty = 1;
