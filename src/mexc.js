@@ -478,3 +478,24 @@ export async function fetchAllSymbols() {
     return [];
   }
 }
+
+export async function fetchTopSymbolsByVolume(limit = 20) {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/contract/ticker`);
+    if (!res.ok) throw new Error(`fetchTopSymbolsByVolume failed: ${res.status}`);
+    const d = await res.json();
+    if (!d.success || !Array.isArray(d.data)) return [];
+
+    const symbols = d.data
+      .filter(t => t.symbol && t.symbol.endsWith('_USDT'))
+      .sort((a, b) => parseFloat(b.amount24 || b.volume24 || 0) - parseFloat(a.amount24 || a.volume24 || 0))
+      .slice(0, limit)
+      .map(t => fromMexcSymbol(t.symbol));
+
+    console.log(`📊 Top ${limit} MEXC pairs by 24h volume: ${symbols.join(', ')}`);
+    return symbols;
+  } catch (e) {
+    console.error('fetchTopSymbolsByVolume error:', e.message);
+    return [];
+  }
+}

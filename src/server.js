@@ -15,6 +15,7 @@ import {
   fetchPositions,
   fetchBinanceAnalytics,
   fetchAllSymbols,
+  fetchTopSymbolsByVolume,
   ping,
 } from './mexc.js';
 import {
@@ -92,10 +93,11 @@ let disabledPairs = loadDisabledPairs();
 let allMexcPairs    = [];
 let pairsCachedAt   = 0;
 const PAIRS_CACHE_MS = 10 * 60 * 1000; // 10 λεπτά
+const TOP_PAIRS_LIMIT = 20;
 
 async function getAllPairs() {
   if (allMexcPairs.length && Date.now() - pairsCachedAt < PAIRS_CACHE_MS) return allMexcPairs;
-  const symbols = await fetchAllSymbols();
+  const symbols = await fetchTopSymbolsByVolume(TOP_PAIRS_LIMIT);
   if (symbols.length) { allMexcPairs = symbols; pairsCachedAt = Date.now(); }
   return allMexcPairs;
 }
