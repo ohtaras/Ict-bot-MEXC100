@@ -46,15 +46,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function scanPair(symbol) {
   try {
-    const candles  = await fetchCandles(symbol, '1h', 200);
+    const candles     = await fetchCandles(symbol, '1h', 200);
     if (candles.length < 30) return [];
-    const rrRatio  = parseFloat(process.env.RR_RATIO || '1');
-    const signals  = ictCoreEngine(candles, symbol, rrRatio);
+    const rrRatio     = parseFloat(process.env.RR_RATIO     || '1');
+    const signals     = ictCoreEngine(candles, symbol, rrRatio);
 
     // Pre-calculate simulation sizing — χρησιμοποιεί ΔΙΑΘΕΣΙΜΟ balance (μετά locked margins)
     const availBal    = getAvailableSimBalance();
     const riskPercent = parseFloat(process.env.RISK_PERCENT || '1');
-    const rrRatio     = parseFloat(process.env.RR_RATIO     || '1');
     const riskAmount  = parseFloat((availBal * riskPercent / 100).toFixed(2));
     for (const s of signals) {
       s.riskAmount      = riskAmount;
