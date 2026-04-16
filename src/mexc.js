@@ -479,6 +479,13 @@ export async function fetchAllSymbols() {
   }
 }
 
+// Γνωστά forex νομίσματα που διαπραγματεύονται ως futures στο MEXC
+const FOREX_BASES = new Set([
+  'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD',
+  'SGD', 'HKD', 'MXN', 'TRY', 'ZAR', 'SEK', 'NOK',
+  'DKK', 'PLN', 'CZK', 'HUF', 'BRL', 'INR',
+]);
+
 export async function fetchTopSymbolsByVolume(limit = 20) {
   try {
     const res = await fetch(`${BASE_URL}/api/v1/contract/ticker`);
@@ -486,14 +493,27 @@ export async function fetchTopSymbolsByVolume(limit = 20) {
     const d = await res.json();
     if (!d.success || !Array.isArray(d.data)) return [];
 
-    const symbols = d.data
-      .filter(t => t.symbol && t.symbol.endsWith('_USDT'))
-      .sort((a, b) => parseFloat(b.amount24 || b.volume24 || 0) - parseFloat(a.amount24 || a.volume24 || 0))
-      .slice(0, limit)
-      .map(t => fromMexcSymbol(t.symbol));
+    const usdtTickers = d.data.filter(t => t.symbol && t.symbol.endsWith('_USDT'));
 
-    console.log(`📊 Top ${limit} MEXC pairs by 24h volume: ${symbols.join(', ')}`);
-    return symbols;
+    // Top N βάσει 24h volume σε $
+    const sorted = [...usdtTickers].sort(
+      (a, b) => parseFloat(b.amount24 || b.volume24 || 0) - parseFloat(a.amount24 || a.volume24 || 0)
+    );
+    const top = sorted.slice(0, limit).map(t => fromMexcSymbol(t.symbol));
+
+    // Forex pairs (ό,τι υπάρχει στο MEXC)
+    const forex = usdtTickers
+      .map(t => fromMexcSymbol(t.symbol))
+      .filter(s => {
+        const base = s.replace('USDT', '');
+        return FOREX_BASES.has(base);
+      });
+
+    // Ένωση χωρίς διπλότυπα
+    const combined = [...new Set([...top, ...forex])];
+
+    console.log(`📊 Top ${limit} by volume + ${forex.length} forex = ${combined.length} pairs: ${combined.join(', ')}`);
+    return combined;
   } catch (e) {
     console.error('fetchTopSymbolsByVolume error:', e.message);
     return [];
