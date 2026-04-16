@@ -58,7 +58,11 @@ function saveLocalHistory() { saveJSON(LOCAL_HISTORY_FILE, localHistory); }
 // ─── HELPERS ──────────────────────────────────────────────────────────
 
 function getRisk() {
-  return parseFloat(process.env.RISK_PERCENT || '2.5');
+  return parseFloat(process.env.RISK_PERCENT || '1');
+}
+
+function getRR() {
+  return parseFloat(process.env.RR_RATIO || '1');
 }
 
 function getSimBalance() {
@@ -156,7 +160,7 @@ export async function executeSignalLocal(signal) {
   const slDistance      = Math.abs(entry - sl);
   const actualRisk      = qty * contractSize * slDistance;  // τι χάνεις αν πάει SL
   const potentialLoss   = parseFloat((actualRisk + openFee + closeFeeEst).toFixed(4));
-  const potentialProfit = parseFloat((actualRisk * 2.5 - openFee - closeFeeEst).toFixed(4));
+  const potentialProfit = parseFloat((actualRisk * getRR() - openFee - closeFeeEst).toFixed(4));
   const actualRiskPct   = availableBalance > 0 ? parseFloat(((actualRisk / availableBalance) * 100).toFixed(2)) : 0;
 
   const positionSize    = parseFloat(notional.toFixed(4));
@@ -171,7 +175,7 @@ export async function executeSignalLocal(signal) {
     entryPrice:        entry,
     sl,
     tp,
-    rr:                2.5,
+    rr:                getRR(),
     riskAmount:        parseFloat(actualRisk.toFixed(4)),
     riskPercent:       actualRiskPct,
     potentialProfit,

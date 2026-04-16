@@ -10,7 +10,7 @@ export function generateId() {
   return randomUUID().replace(/-/g, '').slice(0, 16);
 }
 
-export function ictCoreEngine(candles, pair) {
+export function ictCoreEngine(candles, pair, rrRatio = 1) {
   if (candles.length < 30) return [];
 
   const signals     = [];
@@ -59,7 +59,7 @@ export function ictCoreEngine(candles, pair) {
           if (j >= 2 && candles[j].low > candles[j - 2].high) {
             const entryPrice = candles[j].low;
             const sl = currentLow - (currentLow * 0.001);
-            const tp = entryPrice + (entryPrice - sl) * 2.5;
+            const tp = entryPrice + (entryPrice - sl) * rrRatio;
 
             signals.push({
               id:          generateId(),
@@ -69,7 +69,7 @@ export function ictCoreEngine(candles, pair) {
               entry:       parseFloat(entryPrice.toPrecision(8)),
               sl:          parseFloat(sl.toPrecision(8)),
               tp:          parseFloat(tp.toPrecision(8)),
-              rr:          2.5,
+              rr:          rrRatio,
               timestamp:   candles[j].time,
               detectedAt:  Date.now(),
               status:      'pending',
@@ -95,7 +95,7 @@ export function ictCoreEngine(candles, pair) {
           if (j >= 2 && candles[j].high < candles[j - 2].low) {
             const entryPrice = candles[j].high;
             const sl = currentHigh + (currentHigh * 0.001);
-            const tp = entryPrice - (sl - entryPrice) * 2.5;
+            const tp = entryPrice - (sl - entryPrice) * rrRatio;
 
             signals.push({
               id:          generateId(),
@@ -105,7 +105,7 @@ export function ictCoreEngine(candles, pair) {
               entry:       parseFloat(entryPrice.toPrecision(8)),
               sl:          parseFloat(sl.toPrecision(8)),
               tp:          parseFloat(Math.max(0, tp).toPrecision(8)),
-              rr:          2.5,
+              rr:          rrRatio,
               timestamp:   candles[j].time,
               detectedAt:  Date.now(),
               status:      'pending',

@@ -44,7 +44,8 @@ app.use(express.static(join(__dirname, '../public')));
 // ─── SETTINGS ─────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS = {
-  riskPercent:    parseFloat(process.env.RISK_PERCENT || '2.5'),
+  riskPercent:    parseFloat(process.env.RISK_PERCENT || '1'),
+  rrRatio:        parseFloat(process.env.RR_RATIO     || '1'),
   initialBalance: parseFloat(process.env.SIM_BALANCE  || '100'),
   leverage:       10,
   scanInterval:   60,
@@ -61,6 +62,8 @@ function loadSettings() {
       if (s.mexcApiKey)    process.env.MEXC_API_KEY    = s.mexcApiKey;
       if (s.mexcSecretKey) process.env.MEXC_SECRET_KEY = s.mexcSecretKey;
       if (s.initialBalance) process.env.SIM_BALANCE    = s.initialBalance.toString();
+      if (s.riskPercent)    process.env.RISK_PERCENT   = s.riskPercent.toString();
+      if (s.rrRatio)        process.env.RR_RATIO       = s.rrRatio.toString();
       return s;
     }
   } catch {}
@@ -156,9 +159,10 @@ app.get('/settings', (req, res) => {
 
 // ─── SETTINGS POST ────────────────────────────────────────────────────
 app.post('/settings', (req, res) => {
-  const { riskPercent, initialBalance, leverage, scanInterval, priceInterval, mexcApiKey, mexcSecretKey } = req.body;
+  const { riskPercent, rrRatio, initialBalance, leverage, scanInterval, priceInterval, mexcApiKey, mexcSecretKey } = req.body;
 
   if (riskPercent    !== undefined) botSettings.riskPercent    = parseFloat(riskPercent);
+  if (rrRatio        !== undefined) botSettings.rrRatio        = parseFloat(rrRatio);
   if (initialBalance !== undefined) botSettings.initialBalance = parseFloat(initialBalance);
   if (leverage       !== undefined) botSettings.leverage       = parseInt(leverage);
   if (scanInterval   !== undefined) botSettings.scanInterval   = parseInt(scanInterval);
@@ -169,10 +173,11 @@ app.post('/settings', (req, res) => {
   if (mexcSecretKey && mexcSecretKey !== maskKey(botSettings.mexcSecretKey)) { botSettings.mexcSecretKey = mexcSecretKey; process.env.MEXC_SECRET_KEY = mexcSecretKey; }
 
   process.env.RISK_PERCENT = botSettings.riskPercent.toString();
+  process.env.RR_RATIO     = botSettings.rrRatio.toString();
   process.env.SIM_BALANCE  = botSettings.initialBalance.toString();
 
   saveSettings(botSettings);
-  console.log(`⚙️ Settings updated | Risk: ${botSettings.riskPercent}% | SimBalance: $${botSettings.initialBalance}`);
+  console.log(`⚙️ Settings updated | Risk: ${botSettings.riskPercent}% | R:R 1:${botSettings.rrRatio} | SimBalance: $${botSettings.initialBalance}`);
 
   res.json({
     success:  true,
